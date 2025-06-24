@@ -1,0 +1,85 @@
+|--- gdh_mean_in <= 7.61
+|   |--- gdc_mean_in <= 18.51
+|   |   |--- gdh_mean_in <= 1.40
+|   |   |   |--- value: [0.69]
+|   |   |--- gdh_mean_in >  1.40
+|   |   |   |--- gdh_mean_in <= 4.49
+|   |   |   |   |--- gdh_mean_in <= 4.01
+|   |   |   |   |   |--- gdc_mean_in <= 6.70
+|   |   |   |   |   |   |--- value: [0.87]
+|   |   |   |   |   |--- gdc_mean_in >  6.70
+|   |   |   |   |   |   |--- value: [1.68]
+|   |   |   |   |--- gdh_mean_in >  4.01
+|   |   |   |   |   |--- value: [2.63]
+|   |   |   |--- gdh_mean_in >  4.49
+|   |   |   |   |--- gdc_mean_in <= 4.50
+|   |   |   |   |   |--- gdh_mean_in <= 4.75
+|   |   |   |   |   |   |--- value: [0.84]
+|   |   |   |   |   |--- gdh_mean_in >  4.75
+|   |   |   |   |   |   |--- value: [1.07]
+|   |   |   |   |--- gdc_mean_in >  4.50
+|   |   |   |   |   |--- gdh_mean_in <= 7.00
+|   |   |   |   |   |   |--- value: [1.18]
+|   |   |   |   |   |--- gdh_mean_in >  7.00
+|   |   |   |   |   |   |--- value: [1.57]
+|   |--- gdc_mean_in >  18.51
+|   |   |--- gdc_mean_in <= 21.14
+|   |   |   |--- gdc_mean_in <= 19.24
+|   |   |   |   |--- value: [2.72]
+|   |   |   |--- gdc_mean_in >  19.24
+|   |   |   |   |--- gdh_mean_in <= 3.65
+|   |   |   |   |   |--- value: [1.93]
+|   |   |   |   |--- gdh_mean_in >  3.65
+|   |   |   |   |   |--- value: [1.92]
+|   |   |--- gdc_mean_in >  21.14
+|   |   |   |--- gdc_mean_in <= 31.86
+|   |   |   |   |--- gdc_mean_in <= 25.86
+|   |   |   |   |   |--- gdh_mean_in <= 3.63
+|   |   |   |   |   |   |--- value: [2.39]
+|   |   |   |   |   |--- gdh_mean_in >  3.63
+|   |   |   |   |   |   |--- value: [3.20]
+|   |   |   |   |--- gdc_mean_in >  25.86
+|   |   |   |   |   |--- gdc_mean_in <= 27.18
+|   |   |   |   |   |   |--- value: [2.06]
+|   |   |   |   |   |--- gdc_mean_in >  27.18
+|   |   |   |   |   |   |--- value: [2.48]
+|   |   |   |--- gdc_mean_in >  31.86
+|   |   |   |   |--- gdh_mean_in <= 5.58
+|   |   |   |   |   |--- value: [2.42]
+|   |   |   |   |--- gdh_mean_in >  5.58
+|   |   |   |   |   |--- value: [3.59]
+|--- gdh_mean_in >  7.61
+|   |--- gdc_mean_in <= 69.77
+|   |   |--- gdc_mean_in <= 40.19
+|   |   |   |--- gdh_mean_in <= 8.54
+|   |   |   |   |--- value: [3.49]
+|   |   |   |--- gdh_mean_in >  8.54
+|   |   |   |   |--- gdh_mean_in <= 9.07
+|   |   |   |   |   |--- value: [2.07]
+|   |   |   |   |--- gdh_mean_in >  9.07
+|   |   |   |   |   |--- gdc_mean_in <= 29.77
+|   |   |   |   |   |   |--- value: [2.59]
+|   |   |   |   |   |--- gdc_mean_in >  29.77
+|   |   |   |   |   |   |--- value: [3.29]
+|   |   |--- gdc_mean_in >  40.19
+|   |   |   |--- gdh_mean_in <= 12.02
+|   |   |   |   |--- gdh_mean_in <= 10.78
+|   |   |   |   |   |--- gdc_mean_in <= 42.59
+|   |   |   |   |   |   |--- value: [4.63]
+|   |   |   |   |   |--- gdc_mean_in >  42.59
+|   |   |   |   |   |   |--- value: [4.15]
+|   |   |   |   |--- gdh_mean_in >  10.78
+|   |   |   |   |   |--- value: [5.30]
+|   |   |   |--- gdh_mean_in >  12.02
+|   |   |   |   |--- gdc_mean_in <= 58.25
+|   |   |   |   |   |--- gdh_mean_in <= 13.22
+|   |   |   |   |   |   |--- value: [2.48]
+|   |   |   |   |   |--- gdh_mean_in >  13.22
+|   |   |   |   |   |   |--- value: [3.67]
+|   |   |   |   |--- gdc_mean_in >  58.25
+|   |   |   |   |   |--- value: [4.40]
+|   |--- gdc_mean_in >  69.77
+|   |   |--- gdc_mean_in <= 75.33
+|   |   |   |--- value: [5.88]
+|   |   |--- gdc_mean_in >  75.33
+|   |   |   |--- value: [6.53]

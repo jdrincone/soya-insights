@@ -1,0 +1,33 @@
+{
+    "model_type": "RandomForestRegressor",
+    "features": [
+        "gdc_mean_in",
+        "gdh_mean_in"
+    ],
+    "target": "pct_oil_acidez_mean",
+    "training_date": "2025-06-24T16:09:18.060856",
+    "best_params": {
+        "bootstrap": true,
+        "ccp_alpha": 0.0,
+        "criterion": "squared_error",
+        "max_depth": 6,
+        "max_features": 0.9711008778424264,
+        "max_leaf_nodes": null,
+        "max_samples": null,
+        "min_impurity_decrease": 0.0,
+        "min_samples_leaf": 2,
+        "min_samples_split": 3,
+        "min_weight_fraction_leaf": 0.0,
+        "monotonic_cst": null,
+        "n_estimators": 545,
+        "n_jobs": null,
+        "oob_score": false,
+        "random_state": 42,
+        "verbose": 0,
+        "warm_start": false
+    },
+    "feature_importance": {
+        "gdc_mean_in": 0.6147086403549522,
+        "gdh_mean_in": 0.3852913596450478
+    }
+}
