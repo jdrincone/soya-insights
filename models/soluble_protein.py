@@ -230,13 +230,20 @@ fig_dist_ps.update_layout(
     font=dict(family="Arial, sans-serif", size=12, color=CORPORATE_COLORS["verde_oscuro"])
 )
 
-# Agregar línea vertical para la media
-mean_ps = df_clean["PS"].mean()
+# Agregar línea vertical para la mediana
+mean_ps = df_clean["PS"].median()
 fig_dist_ps.add_vline(
     x=mean_ps,
     line_dash="dash",
-    line_color=CORPORATE_COLORS["gris_neutro"],
-    annotation_text=f"Mean: {mean_ps:.1f}%"
+    line_color=CORPORATE_COLORS["gris_neutro"]
+)
+# Agregar anotación más arriba
+fig_dist_ps.add_annotation(
+    x=mean_ps+3,
+    y=24,  # 15% más arriba del valor máximo
+    text=f"Median: {mean_ps:.1f}%",
+    showarrow=False,
+    font=dict(color=CORPORATE_COLORS["verde_oscuro"], size=12)
 )
 
 # Guardar gráfica de distribución de PS
@@ -269,7 +276,7 @@ fig_dist_gdt.add_vline(
     x=mean_gdt,
     line_dash="dash",
     line_color=CORPORATE_COLORS["gris_neutro"],
-    annotation_text=f"Mean: {mean_gdt:.1f}%"
+    annotation_text=f"Median: {mean_gdt:.1f}%"
 )
 
 # Guardar gráfica de distribución de GDT

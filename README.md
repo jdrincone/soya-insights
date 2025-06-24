@@ -46,7 +46,7 @@ Soya Insights es una aplicación web interactiva que permite:
 
 3. **Acceder a la aplicación:**
    Abrir http://localhost:8501 en tu navegador
-
+docker run -p 8501:8501 soya-insights
 ### Opción 2: Desarrollo Local
 
 1. **Instalar uv:**

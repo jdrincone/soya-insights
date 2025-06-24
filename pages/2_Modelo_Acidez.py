@@ -4,6 +4,32 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+import streamlit.components.v1 as components
+import os
+import joblib
+import json
+
+# Colores corporativos
+CORPORATE_COLORS = {
+    "verde_oscuro": "#1A494C",      # rgb(26,73,76)
+    "verde_claro": "#94AF92",       # rgb(148,175,146)
+    "verde_muy_claro": "#E6ECD8",   # rgb(230,236,216)
+    "gris_neutro": "#C9C9C9"        # rgb(201,201,201)
+}
+
+@st.cache_resource
+def load_acidez_model():
+    """Cargar el modelo de acidez"""
+    try:
+        model = joblib.load("models/artifacts/random_forest_acidez.pkl")
+        with open("models/artifacts/metrics_acidez.json", "r") as f:
+            metrics = json.load(f)
+        with open("models/artifacts/model_info_acidez.json", "r") as f:
+            model_info = json.load(f)
+        return model, metrics, model_info
+    except Exception as e:
+        st.error(f"Error cargando modelo: {e}")
+        return None, None, None
 
 st.set_page_config(
     page_title="Modelo de Acidez - Soya Insights",
@@ -12,6 +38,264 @@ st.set_page_config(
 )
 
 st.title("🧪 Modelo de Cambio de Acidez en Función del Daño del Grano")
+st.markdown("---")
+
+# ===== CALCULADORA PRÁCTICA =====
+st.header("🧮 Calculadora de Acidez - Análisis Rápido")
+
+# Cargar modelo ML
+model, metrics, model_info = load_acidez_model()
+
+if model is not None:
+    # Obtener valor medio de acidez de los datos
+    df_acidez_data = pd.read_csv("models/data/data_acidez.csv")
+    acidez_media = df_acidez_data['pct_oil_acidez_mean'].mean()
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("📊 Ingrese los Valores de Daño")
+        
+        # Inputs para GDC y GDH
+        gdc_input = st.number_input(
+            "GDC - Daño Térmico (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=30.0,
+            step=0.1,
+            help="Ingrese el porcentaje de daño térmico observado"
+        )
+        
+        gdh_input = st.number_input(
+            "GDH - Daño por Hongos (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=15.0,
+            step=0.1,
+            help="Ingrese el porcentaje de daño por hongos observado"
+        )
+        
+        # Botón para calcular
+        if st.button("🔍 Calcular Acidez Esperada", type="primary"):
+            # Hacer predicción
+            data_input = pd.DataFrame({
+                'gdc_mean_in': [gdc_input],
+                'gdh_mean_in': [gdh_input]
+            })
+            
+            acidez_predicha = model.predict(data_input)[0]
+            diferencia_media = acidez_predicha - acidez_media
+            porcentaje_cambio = (diferencia_media / acidez_media) * 100
+            
+            # Guardar en session state para mostrar en la columna derecha
+            st.session_state.acidez_resultado = {
+                'predicha': acidez_predicha,
+                'media': acidez_media,
+                'diferencia': diferencia_media,
+                'porcentaje': porcentaje_cambio,
+                'gdc': gdc_input,
+                'gdh': gdh_input
+            }
+    
+    with col2:
+        st.subheader("📈 Resultado del Análisis")
+        
+        if 'acidez_resultado' in st.session_state:
+            resultado = st.session_state.acidez_resultado
+            
+            # Métrica principal
+            st.metric(
+                label="Acidez Esperada",
+                value=f"{resultado['predicha']:.2f} mg KOH/g",
+                delta=f"{resultado['diferencia']:+.2f} mg KOH/g"
+            )
+            
+            # Comparación con media
+            st.markdown("**Comparación con Valor Medio:**")
+            st.markdown(f"- **Valor Medio:** {resultado['media']:.2f} mg KOH/g")
+            st.markdown(f"- **Diferencia:** {resultado['diferencia']:+.2f} mg KOH/g")
+            st.markdown(f"- **Cambio:** {resultado['porcentaje']:+.1f}%")
+            
+            # Interpretación
+            st.markdown("**Interpretación:**")
+            if resultado['diferencia'] > 0:
+                st.warning(f"⚠️ **Por encima del promedio** (+{resultado['diferencia']:.2f} mg KOH/g)")
+            elif resultado['diferencia'] < 0:
+                st.success(f"✅ **Por debajo del promedio** ({resultado['diferencia']:.2f} mg KOH/g)")
+            else:
+                st.info("ℹ️ **En el promedio**")
+            
+            # Calidad según acidez
+            if resultado['predicha'] < 1.0:
+                st.success("🟢 **Calidad Excelente**")
+            elif resultado['predicha'] < 2.0:
+                st.warning("🟡 **Calidad Buena**")
+            else:
+                st.error("🔴 **Calidad Crítica**")
+            
+            # Recomendación
+            st.markdown("**Recomendación:**")
+            if resultado['predicha'] > 3.0:
+                st.error("🔴 Revisar condiciones de almacenamiento y procesamiento")
+            elif resultado['predicha'] > 2.0:
+                st.warning("🟡 Monitorear parámetros de proceso")
+            else:
+                st.success("🟢 Condiciones óptimas mantenidas")
+        
+        else:
+            st.info("💡 Ingrese valores y haga clic en 'Calcular' para ver el análisis")
+    
+    # Mostrar información del modelo
+    with st.expander("ℹ️ Información del Modelo"):
+        st.markdown(f"""
+        **Modelo Random Forest:**
+        - **Precisión (R²):** {metrics['test']['r2']:.1%}
+        - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
+        - **Valor medio histórico:** {acidez_media:.2f} mg KOH/g
+        
+        **Importancia de Variables:**
+        - **GDC (Térmico):** {model_info['feature_importance']['gdc_mean_in']:.1%}
+        - **GDH (Hongos):** {model_info['feature_importance']['gdh_mean_in']:.1%}
+        """)
+
+else:
+    st.error("❌ No se pudo cargar el modelo. Verifique que el archivo `models/artifacts/random_forest_acidez.pkl` existe.")
+
+# Mostrar análisis detallado si hay resultado (fuera de las columnas)
+if 'acidez_resultado' in st.session_state:
+    st.markdown("---")
+    st.header("📊 Análisis Detallado")
+    
+    resultado = st.session_state.acidez_resultado
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🎯 Posición en la Distribución")
+        
+        # Crear gráfico de distribución con el punto actual
+        fig_dist = go.Figure()
+        
+        # Histograma de datos históricos
+        fig_dist.add_trace(go.Histogram(
+            x=df_acidez_data['pct_oil_acidez_mean'],
+            name='Datos Históricos',
+            marker_color=CORPORATE_COLORS["verde_claro"],
+            opacity=0.7,
+            nbinsx=30
+        ))
+        
+        # Línea de media
+        fig_dist.add_vline(
+            x=resultado['media'],
+            line_dash="dash",
+            line_color="blue",
+            annotation_text=f"Media: {resultado['media']:.2f}",
+            annotation_position="top right"
+        )
+        
+        # Punto actual
+        fig_dist.add_vline(
+            x=resultado['predicha'],
+            line_dash="solid",
+            line_color="red",
+            line_width=3,
+            annotation_text=f"Predicción: {resultado['predicha']:.2f}",
+            annotation_position="top left"
+        )
+        
+        fig_dist.update_layout(
+            title="Distribución Histórica de Acidez",
+            xaxis_title="Acidez (mg KOH/g)",
+            yaxis_title="Frecuencia",
+            height=400,
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig_dist, use_container_width=True, key="dist_hist")
+    
+    with col2:
+        st.subheader("📈 Comparación de Variables")
+        
+        # Gráfico de radar para comparar GDC y GDH
+        fig_radar = go.Figure()
+        
+        fig_radar.add_trace(go.Scatterpolar(
+            r=[resultado['gdc'], resultado['gdh']],
+            theta=['GDC (Térmico)', 'GDH (Hongos)'],
+            fill='toself',
+            name='Valores Actuales',
+            line_color=CORPORATE_COLORS["verde_oscuro"]
+        ))
+        
+        # Valores medios históricos
+        gdc_medio = df_acidez_data['gdc_mean_in'].mean()
+        gdh_medio = df_acidez_data['gdh_mean_in'].mean()
+        
+        fig_radar.add_trace(go.Scatterpolar(
+            r=[gdc_medio, gdh_medio],
+            theta=['GDC (Térmico)', 'GDH (Hongos)'],
+            fill='toself',
+            name='Valores Medios',
+            line_color=CORPORATE_COLORS["gris_neutro"]
+        ))
+        
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, max(resultado['gdc'], resultado['gdh'], gdc_medio, gdh_medio) * 1.2]
+                )),
+            showlegend=True,
+            title="Comparación con Valores Medios",
+            height=400
+        )
+        
+        st.plotly_chart(fig_radar, use_container_width=True, key="radar_comp")
+    
+    # Tabla de resumen
+    st.subheader("📋 Resumen del Análisis")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Acidez Predicha",
+            f"{resultado['predicha']:.2f} mg KOH/g",
+            f"{resultado['diferencia']:+.2f}"
+        )
+    
+    with col2:
+        st.metric(
+            "Desviación",
+            f"{resultado['porcentaje']:+.1f}%",
+            "vs Media"
+        )
+    
+    with col3:
+        # Calcular percentil
+        percentil = (df_acidez_data['pct_oil_acidez_mean'] < resultado['predicha']).mean() * 100
+        st.metric(
+            "Percentil",
+            f"{percentil:.0f}%",
+            "de la distribución"
+        )
+    
+    with col4:
+        # Calcular riesgo
+        if resultado['predicha'] < 1.0:
+            riesgo = "Bajo"
+        elif resultado['predicha'] < 2.0:
+            riesgo = "Moderado"
+        else:
+            riesgo = "Alto"
+        
+        st.metric(
+            "Nivel de Riesgo",
+            riesgo,
+            "Calidad"
+        )
+
 st.markdown("---")
 
 # Sidebar para parámetros del modelo
@@ -154,7 +438,7 @@ fig_acidez.update_layout(
     hovermode='x unified'
 )
 
-st.plotly_chart(fig_acidez, use_container_width=True)
+st.plotly_chart(fig_acidez, use_container_width=True, key="acidez_model")
 
 # ===== SECCIÓN 3: ANÁLISIS DE SENSIBILIDAD =====
 st.header("🔍 Análisis de Sensibilidad")
@@ -162,104 +446,99 @@ st.header("🔍 Análisis de Sensibilidad")
 col1, col2 = st.columns(2)
 
 with col1:
-    # Sensibilidad a temperatura
-    temps = np.arange(15, 41, 5)
-    acidez_temp = [modelo_acidez_cientifico(0.5, acidez_base, factor_acidez, t, factor_temp_acidez) 
-                  for t in temps]
+    st.subheader("🌡️ Efecto de la Temperatura")
     
-    fig_temp = px.line(
-        x=temps,
-        y=acidez_temp,
-        title="Sensibilidad a la Temperatura (50% degradación)",
-        labels={'x': 'Temperatura (°C)', 'y': 'Acidez (mg KOH/g)'}
+    # Análisis de sensibilidad a temperatura
+    temperaturas = np.arange(15, 41, 5)
+    acideces_temp = []
+    
+    for temp in temperaturas:
+        acidez_temp = modelo_acidez_cientifico(0.5, acidez_base, factor_acidez, temp, factor_temp_acidez)
+        acideces_temp.append(acidez_temp)
+    
+    fig_temp = go.Figure()
+    fig_temp.add_trace(go.Scatter(
+        x=temperaturas,
+        y=acideces_temp,
+        mode='lines+markers',
+        name='Acidez vs Temperatura',
+        line=dict(color='red', width=3)
+    ))
+    
+    fig_temp.update_layout(
+        title="Efecto de la Temperatura en la Acidez (50% degradación)",
+        xaxis_title="Temperatura (°C)",
+        yaxis_title="Acidez (mg KOH/g)",
+        height=400
     )
-    fig_temp.update_traces(line_color='red', line_width=3)
-    st.plotly_chart(fig_temp, use_container_width=True)
+    
+    st.plotly_chart(fig_temp, use_container_width=True, key="temp_sensitivity")
 
 with col2:
-    # Sensibilidad al factor de acidez
+    st.subheader("⚡ Efecto del Factor de Acidez")
+    
+    # Análisis de sensibilidad al factor de acidez
     factores = np.arange(1.0, 5.1, 0.5)
-    acidez_factor = [modelo_acidez_cientifico(0.5, acidez_base, f, temperatura_acidez, factor_temp_acidez) 
-                    for f in factores]
+    acideces_factor = []
     
-    fig_factor = px.line(
+    for factor in factores:
+        acidez_fact = modelo_acidez_cientifico(0.5, acidez_base, factor, temperatura_acidez, factor_temp_acidez)
+        acideces_factor.append(acidez_fact)
+    
+    fig_factor = go.Figure()
+    fig_factor.add_trace(go.Scatter(
         x=factores,
-        y=acidez_factor,
-        title="Sensibilidad al Factor de Acidez (50% degradación)",
-        labels={'x': 'Factor de Acidez', 'y': 'Acidez (mg KOH/g)'}
+        y=acideces_factor,
+        mode='lines+markers',
+        name='Acidez vs Factor',
+        line=dict(color='purple', width=3)
+    ))
+    
+    fig_factor.update_layout(
+        title="Efecto del Factor de Acidez (50% degradación)",
+        xaxis_title="Factor de Acidez",
+        yaxis_title="Acidez (mg KOH/g)",
+        height=400
     )
-    fig_factor.update_traces(line_color='purple', line_width=3)
-    st.plotly_chart(fig_factor, use_container_width=True)
-
-# ===== SECCIÓN 4: TABLA DE RESULTADOS =====
-st.header("📋 Resultados Detallados")
-
-# Crear tabla con puntos clave de degradación
-puntos_degradacion = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-resultados_acidez = []
-
-for deg in puntos_degradacion:
-    acidez = modelo_acidez_cientifico(deg, acidez_base, factor_acidez, temperatura_acidez, factor_temp_acidez)
-    incremento = acidez - acidez_base
     
-    # Determinar calidad basada en acidez
-    if acidez < 1.0:
-        calidad = "Excelente"
-        color = "🟢"
-    elif acidez < 2.0:
-        calidad = "Buena"
-        color = "🟡"
-    elif acidez < 3.0:
-        calidad = "Moderada"
-        color = "🟠"
-    else:
-        calidad = "Crítica"
-        color = "🔴"
-    
-    resultados_acidez.append({
-        'Degradación (%)': f"{deg * 100:.0f}%",
-        'Acidez (mg KOH/g)': f"{acidez:.2f}",
-        'Incremento (mg KOH/g)': f"+{incremento:.2f}",
-        'Calidad': f"{color} {calidad}"
-    })
+    st.plotly_chart(fig_factor, use_container_width=True, key="factor_sensitivity")
 
-df_resultados = pd.DataFrame(resultados_acidez)
-st.dataframe(df_resultados, use_container_width=True)
-
-# ===== SECCIÓN 5: INTERPRETACIÓN CIENTÍFICA =====
-st.header("🧪 Interpretación Científica")
+# ===== SECCIÓN 4: DISTRIBUCIONES DE ACIDEZ =====
+st.header("📊 Distribuciones de Variables de Acidez")
 
 st.markdown("""
-### Mecanismos de Formación de Acidez
+### Análisis de Distribuciones de Datos Reales
 
-1. **Hidrólisis de Triglicéridos**: Los lípidos se descomponen liberando ácidos grasos libres
-2. **Oxidación Lipídica**: Los ácidos grasos se oxidan formando peróxidos y ácidos
-3. **Actividad Enzimática**: Las lipasas naturales hidrolizan los triglicéridos
-4. **Actividad Microbiana**: Hongos y bacterias producen ácidos orgánicos
-
-### Factores que Afectan la Acidez
-
-- **Temperatura elevada**: Acelera reacciones de hidrólisis y oxidación
-- **Humedad alta**: Favorece actividad enzimática y microbiana
-- **Tiempo de almacenamiento**: Acumulación de productos de degradación
-- **Daño mecánico**: Facilita acceso de enzimas y microorganismos
-
-### Estándares de Calidad por Acidez
-
-- **< 1.0 mg KOH/g**: Calidad excelente, apto para aceite comestible
-- **1.0 - 2.0 mg KOH/g**: Calidad buena, requiere monitoreo
-- **2.0 - 3.0 mg KOH/g**: Calidad moderada, uso limitado
-- **> 3.0 mg KOH/g**: Calidad crítica, no apto para consumo humano
-
-### Impacto en Productos Derivados
-
-- **Aceite de soya**: Acidez alta reduce estabilidad oxidativa
-- **Harina de soya**: Afecta palatabilidad y digestibilidad
-- **Proteína de soya**: Puede afectar funcionalidad tecnológica
-- **Biodiesel**: Acidez alta puede causar problemas en motores
+A continuación se muestran las distribuciones de las variables relacionadas con la acidez del aceite, 
+basadas en datos reales de análisis de granos de soya:
 """)
 
-# ===== SECCIÓN 6: CALCULADORA INTERACTIVA =====
+# Mostrar la imagen generada
+try:
+    # Leer el archivo HTML
+    with open("models/plots/subplot_distribuciones_acidez_oil.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    
+    # Mostrar el gráfico HTML interactivo
+    st.components.v1.html(html_content, height=600)
+    
+    st.markdown("""
+    **Interpretación de las Distribuciones:**
+    
+    - **GDC (Daño Térmico)**: Muestra la distribución del daño térmico en los granos
+    - **GDH (Daño por Hongos)**: Representa la distribución del daño causado por hongos
+    - **Acidez del Aceite (%)**: Distribución de los valores de acidez medidos en el aceite extraído
+    
+    Las líneas punteadas indican las medianas de cada distribución.
+    
+    *💡 Puedes interactuar con el gráfico: hacer zoom, hover para ver valores, etc.*
+    """)
+    
+except FileNotFoundError:
+    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Ejecute el script `models/acidez_oil.py` para generarlo.")
+    st.code("source xgboost_env/bin/activate && python models/acidez_oil.py")
+
+# ===== SECCIÓN 5: CALCULADORA INTERACTIVA =====
 st.header("🧮 Calculadora de Acidez")
 
 col1, col2 = st.columns(2)
@@ -274,31 +553,280 @@ with col1:
         help="Selecciona el nivel de degradación para calcular la acidez"
     )
     
-    acidez_calculada = modelo_acidez_cientifico(
-        degradacion_calc/100, 
-        acidez_base, 
-        factor_acidez, 
-        temperatura_acidez, 
-        factor_temp_acidez
-    )
+    # Usar el modelo de acidez para el cálculo
+    acidez_calculada = modelo_acidez_cientifico(degradacion_calc/100, acidez_base, factor_acidez, temperatura_acidez, factor_temp_acidez)
+    incremento_calculado = acidez_calculada - acidez_base
     
     st.metric(
         label="Acidez Calculada",
         value=f"{acidez_calculada:.2f} mg KOH/g",
-        delta=f"+{acidez_calculada - acidez_base:.2f} mg KOH/g"
+        delta=f"+{incremento_calculado:.2f} mg KOH/g"
     )
+    st.info(f"""
+    **Fórmula utilizada:**
+    Acidez = A₀ + ΔA(D) × Fₜ
+    **Cálculo actual:**
+    Acidez = {acidez_base} + {incremento_calculado:.2f} = {acidez_calculada:.2f} mg KOH/g
+    """)
 
 with col2:
-    # Mostrar interpretación de la acidez calculada
+    # Semáforo según el rango de acidez
     if acidez_calculada < 1.0:
-        st.success("✅ **Calidad Excelente** - Apto para aceite comestible")
-    elif acidez_calculada < 2.0:
-        st.warning("⚠️ **Calidad Buena** - Requiere monitoreo")
-    elif acidez_calculada < 3.0:
-        st.error("🚨 **Calidad Moderada** - Uso limitado")
+        st.success("🟢 < 1.0 mg KOH/g - Calidad Excelente")
+    elif 1.0 <= acidez_calculada < 2.0:
+        st.warning("🟡 Entre 1.0-2.0 mg KOH/g - Calidad Buena")
     else:
-        st.error("🚨 **Calidad Crítica** - No apto para consumo humano")
+        st.error("🔴 > 2.0 mg KOH/g - Calidad Crítica")
+
+# ===== SECCIÓN 5.5: CALCULADORA CON MACHINE LEARNING =====
+st.header("🤖 Calculadora con Machine Learning")
+
+# Cargar modelo
+model, metrics, model_info = load_acidez_model()
+
+if model is not None:
+    st.info(f"""
+    **Modelo Random Forest entrenado:**
+    - **R² en test:** {metrics['test']['r2']:.3f} ({metrics['test']['r2']*100:.1f}%)
+    - **RMSE:** {metrics['test']['rmse']:.3f} mg KOH/g
+    - **MAE:** {metrics['test']['mae']:.3f} mg KOH/g
+    """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        gdc_ml = st.slider(
+            "GDC - Daño Térmico (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=30.0,
+            step=1.0,
+            help="Daño térmico del grano para predicción ML"
+        )
+        
+        gdh_ml = st.slider(
+            "GDH - Daño por Hongos (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=15.0,
+            step=1.0,
+            help="Daño por hongos del grano para predicción ML"
+        )
+        
+        # Hacer predicción
+        data_ml = pd.DataFrame({
+            'gdc_mean_in': [gdc_ml],
+            'gdh_mean_in': [gdh_ml]
+        })
+        
+        acidez_ml_pred = model.predict(data_ml)[0]
+        
+        st.metric(
+            label="Acidez Predicha (ML)",
+            value=f"{acidez_ml_pred:.2f} mg KOH/g",
+            delta=f"Modelo RF (R²={metrics['test']['r2']:.3f})"
+        )
+        
+        # Mostrar importancia de features
+        feature_importance = model_info['feature_importance']
+        st.markdown("**Importancia de Features:**")
+        for feature, importance in feature_importance.items():
+            feature_name = "GDC (Térmico)" if feature == "gdc_mean_in" else "GDH (Hongos)"
+            st.markdown(f"- {feature_name}: {importance:.1%}")
+    
+    with col2:
+        # Semáforo ML
+        if acidez_ml_pred < 1.0:
+            st.success("🟢 < 1.0 mg KOH/g - Calidad Excelente")
+        elif 1.0 <= acidez_ml_pred < 2.0:
+            st.warning("🟡 Entre 1.0-2.0 mg KOH/g - Calidad Buena")
+        else:
+            st.error("🔴 > 2.0 mg KOH/g - Calidad Crítica")
+        
+        # Comparación con modelo científico
+        acidez_cientifica = modelo_acidez_cientifico(
+            (gdc_ml + gdh_ml)/200,  # Promedio de daños
+            acidez_base, 
+            factor_acidez, 
+            temperatura_acidez, 
+            factor_temp_acidez
+        )
+        
+        diferencia = acidez_ml_pred - acidez_cientifica
+        
+        st.markdown("**Comparación de Modelos:**")
+        st.markdown(f"- **ML (Random Forest):** {acidez_ml_pred:.2f} mg KOH/g")
+        st.markdown(f"- **Científico:** {acidez_cientifica:.2f} mg KOH/g")
+        st.markdown(f"- **Diferencia:** {diferencia:+.2f} mg KOH/g")
+        
+        if abs(diferencia) < 0.5:
+            st.success("✅ Modelos similares")
+        elif abs(diferencia) < 1.0:
+            st.warning("⚠️ Modelos moderadamente diferentes")
+        else:
+            st.error("❌ Modelos significativamente diferentes")
+
+else:
+    st.error("❌ No se pudo cargar el modelo de Machine Learning. Verifique que el archivo `models/artifacts/random_forest_acidez.pkl` existe.")
+
+# ===== SECCIÓN 6: TABLA DE RESULTADOS =====
+st.header("📋 Resultados Detallados")
+
+# Crear tabla con puntos clave de degradación
+puntos_degradacion = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99]
+resultados_acidez = []
+for deg in puntos_degradacion:
+    acidez = modelo_acidez_cientifico(deg/100, acidez_base, factor_acidez, temperatura_acidez, factor_temp_acidez)
+    incremento = acidez - acidez_base
+    if acidez < 1.0:
+        calidad = "Calidad Excelente (<1.0 mg KOH/g)"
+        color = "🟢"
+    elif 1.0 <= acidez < 2.0:
+        calidad = "Calidad Buena (1.0-2.0 mg KOH/g)"
+        color = "🟡"
+    else:
+        calidad = "Calidad Crítica (>2.0 mg KOH/g)"
+        color = "🔴"
+    resultados_acidez.append({
+        'Degradación (%)': f"{deg:.0f}%",
+        'Acidez (mg KOH/g)': f"{acidez:.2f}",
+        'Incremento (mg KOH/g)': f"+{incremento:.2f}",
+        'Calidad': f"{color} {calidad}"
+    })
+df_resultados = pd.DataFrame(resultados_acidez)
+st.dataframe(df_resultados, use_container_width=True)
+
+# ===== SECCIÓN 6.5: ANÁLISIS DEL MODELO ML =====
+if model is not None:
+    st.header("🔍 Análisis del Modelo de Machine Learning")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📊 Predicciones vs Valores Reales")
+        try:
+            components.html(open("models/plots/predicciones_vs_reales_acidez.html").read(), height=400)
+        except FileNotFoundError:
+            st.warning("Gráfico de predicciones no encontrado")
+    
+    with col2:
+        st.subheader("📈 Análisis de Residuos")
+        try:
+            components.html(open("models/plots/residuos_acidez.html").read(), height=400)
+        except FileNotFoundError:
+            st.warning("Gráfico de residuos no encontrado")
+    
+    # Gráficos SHAP
+    st.subheader("🎯 Análisis SHAP - Summary Plot")
+    
+    st.markdown("**Distribución de Efectos SHAP (Beeswarm)**")
+    try:
+        st.image("models/artifacts/shap_summary_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite", use_container_width=True)
+    except FileNotFoundError:
+        st.warning("Gráfico SHAP summary no encontrado")
+
+# ===== SECCIÓN 7: ANÁLISIS Y ARGUMENTACIÓN CIENTÍFICA =====
+st.header("🧪 Análisis del Comportamiento de la Acidez del Aceite en Función del Daño del Grano de Soya")
+
+st.subheader("📚 Resumen desde la literatura")
+st.markdown('''
+La acidez del aceite de soya es un indicador crítico de la calidad y estabilidad del producto. Diversos estudios han demostrado que:
+
+- El **daño del grano de soya** (físico o térmico) provoca **hidrólisis de triglicéridos** y liberación de ácidos grasos libres.
+- La **acidez del aceite** se correlaciona directamente con la **oxidación y rancidez**, afectando la vida útil del producto.
+- Procesos como secado, extrusión o almacenamiento inadecuado pueden generar **incrementos significativos** en la acidez.
+- Rangos de acidez considerados óptimos en aceite de soya están típicamente entre **0.1 y 1.0 mg KOH/g**, según estándares internacionales.
+- Valores superiores a **2.0 mg KOH/g** indican **deterioro avanzado** y pueden comprometer la calidad del aceite.
+''')
+
+st.subheader("📈 Resultados del modelo")
+st.markdown(f'''
+Se analizó una base de datos experimental con mediciones de:
+
+- **GDC**: Daño térmico del grano (porcentaje).
+- **GDH**: Daño por hongos del grano (porcentaje).
+- **Acidez**: Acidez del aceite medida en mg KOH/g.
+
+El modelo científico implementado considera múltiples factores:
+
+**A(D) = A₀ + ΔA(D) × Fₜ**
+
+Donde:
+- **A₀**: Acidez base = {acidez_base} mg KOH/g
+- **ΔA(D)**: Incremento por degradación = D × {factor_acidez} × Fₜ
+- **Fₜ**: Factor de temperatura = 1 + (T - 20°C) × {factor_temp_acidez} × 0.01
+- **T**: Temperatura actual = {temperatura_acidez}°C
+
+Este modelo permite **anticipar el incremento de acidez** basado en el nivel de daño observado y las condiciones térmicas.
+''')
+
+st.subheader("🔎 Interpretación técnica")
+st.markdown('''
+- Existe una **relación positiva** entre el daño del grano y la acidez del aceite: a mayor daño, mayor acidez.
+- Esto es consistente con procesos de **hidrólisis enzimática** y **oxidación lipídica** acelerados por el daño.
+- El modelo permite establecer **umbrales de calidad** para el aceite según el nivel de daño del grano.
+- La **temperatura** actúa como factor multiplicador, acelerando los procesos de deterioro.
+''')
+
+st.subheader("🧮 Modelo Avanzado Propuesto")
+
+st.markdown(r'''
+Un modelo avanzado para predecir la acidez del aceite puede incorporar múltiples variables críticas del proceso y la materia prima:
+
+$$
+\begin{align*}
+Acidez =\ & \beta_0 \\
+   & + \beta_1 \times GDC \\
+   & + \beta_2 \times GDH \\
+   & + \beta_3 \times temp\_proceso\_max \\
+   & + \beta_4 \times tiempo\_almacenamiento \\
+   & + \beta_5 \times humedad\_grano \\
+   & + \beta_6 \times actividad\_agua \\
+   & + \beta_7 \times contenido\_lipidos \\
+   & + \beta_8 \times peroxidos \\
+   & + \beta_9 \times indice\_acidez\_inicial \\
+   & + \gamma_1 \times variedad \\
+   & + \gamma_2 \times proveedor \\
+   & + \varepsilon
+\end{align*}
+$$
+
+**Donde:**
+- $Acidez$: Acidez del aceite (mg KOH/g)
+- $GDC$: Daño térmico del grano (%)
+- $GDH$: Daño por hongos del grano (%)
+- $temp\_proceso\_max$: Temperatura máxima de proceso (°C)
+- $tiempo\_almacenamiento$: Tiempo de almacenamiento (días)
+- $humedad\_grano$: Humedad del grano (%)
+- $actividad\_agua$: Actividad de agua (aw)
+- $contenido\_lipidos$: Contenido de lípidos (%)
+- $peroxidos$: Índice de peróxidos (meq/kg)
+- $indice\_acidez\_inicial$: Acidez inicial del grano (mg KOH/g)
+- $variedad$, $proveedor$: Variables categóricas
+- $\beta_0...\beta_9, \gamma_1, \gamma_2$: Coeficientes a estimar
+- $\varepsilon$: Término de error aleatorio
+
+Este modelo permitiría anticipar la calidad del aceite considerando no solo el daño del grano, sino también las condiciones de almacenamiento, composición lipídica y factores ambientales.
+''')
+
+st.subheader("✅ Conclusión")
+st.markdown(f'''
+> El análisis evidencia una **relación positiva significativa** entre el daño del grano (GDC/GDH) y la acidez del aceite. Este comportamiento sugiere que a mayor daño —probablemente por procesos térmicos, físicos o microbiológicos— se incrementa la acidez del aceite, afectando su calidad y estabilidad.
+>
+> El modelo científico implementado:
+>
+> **A(D) = {acidez_base} + ΔA(D) × Fₜ**, permite cuantificar este incremento bajo condiciones controladas de temperatura y proceso.
+>
+> Esta herramienta:
+> - Puede ser usada como **indicador de control de calidad en planta**, al vincular condiciones de materia prima y proceso con la acidez del aceite.
+> - Ayuda a **identificar desviaciones críticas** que afectan la calidad del aceite de soya.
+> - Permite establecer **umbrales de aceptación** basados en estándares internacionales.
+>
+> Sin embargo, el modelo actual **no captura todas las fuentes de variabilidad**, como humedad, tiempo de almacenamiento, composición lipídica o actividad enzimática residual. Estas variables pueden tener efectos significativos en la acidez del aceite.
+>
+> Se recomienda avanzar hacia un **modelo multivariable integrado**, que permita ajustar por estos factores y mejorar tanto la capacidad predictiva como la interpretación técnica del proceso de deterioro del aceite.
+''')
 
 # Footer
 st.markdown("---")
-st.markdown("*Modelo de Acidez - Soya Insights*") 
+st.markdown("*Modelo de Acidez del Aceite - Soya Insights - Okuo-Analytics - Juan David Rincón *") 

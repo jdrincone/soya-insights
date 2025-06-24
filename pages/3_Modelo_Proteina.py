@@ -52,9 +52,9 @@ with col1:
         **P(D) = P₀ - α × D**
         ### 📌 Parámetros de la ecuación
 
-        - **P(D)**: Contenido de proteína soluble (%) observado cuando el grano tiene un daño total \( D \).
+        - **P(D)**: Contenido de proteína soluble (%) observado cuando el grano tiene un daño total \\( D \\).
         - **P₀**: Contenido de proteína soluble esperado en condiciones ideales, es decir, cuando no hay daño observable en el grano (grano completamente sano).
-        - **\(alpha\)**: Coeficiente de pérdida, que representa la **sensibilidad de la proteína soluble ante el daño**. Este valor indica cuántos puntos porcentuales de proteína se pierden por cada unidad de daño en el grano.
+        - **\\(alpha\\)**: Coeficiente de pérdida, que representa la **sensibilidad de la proteína soluble ante el daño**. Este valor indica cuántos puntos porcentuales de proteína se pierden por cada unidad de daño en el grano.
 
         ---
 
@@ -69,7 +69,7 @@ with col1:
         - Variedad genética de la soya.
         - Procedencia o proveedor del grano.
 
-        Por tanto, la pérdida de proteína se atribuye exclusivamente al **nivel de daño físico o térmico observado** en los granos, representado por la variable \( D \).
+        Por tanto, la pérdida de proteína se atribuye exclusivamente al **nivel de daño físico o térmico observado** en los granos, representado por la variable \\( D \\).
 
         2. **Condiciones constantes de proceso:** Se asume que todos los datos fueron recolectados bajo **las mismas condiciones operativas** en planta (extrusión, secado, molienda, etc.). Esto es importante porque, de no cumplirse, podrían introducirse sesgos por condiciones no controladas.
 
@@ -94,7 +94,7 @@ with col2:
     st.info(f"""
     **Parámetros generales de la Torta de Soya:**
     
-    - **Proteína Soluble Promedio:** {63.07}%
+    - **Proteína Soluble Promedio:** {63.2}%
     - **Proteína Soluble Max:** {75.80}%
     - **Proteína Soluble Mín:** {48.21}%
     - **Ph muestra:** {6.97}
