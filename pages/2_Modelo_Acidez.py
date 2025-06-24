@@ -181,7 +181,7 @@ if 'acidez_resultado' in st.session_state:
             x=df_acidez_data['pct_oil_acidez_mean'],
             name='Datos Históricos',
             marker_color=CORPORATE_COLORS["verde_claro"],
-            opacity=0.7,
+            opacity=1,
             nbinsx=30
         ))
         
@@ -191,7 +191,8 @@ if 'acidez_resultado' in st.session_state:
             line_dash="dash",
             line_color="blue",
             annotation_text=f"Media: {resultado['media']:.2f}",
-            annotation_position="top right"
+            annotation_position="top right",
+            annotation=dict(font=dict(color="#1A494C"))
         )
         
         # Punto actual
@@ -201,7 +202,8 @@ if 'acidez_resultado' in st.session_state:
             line_color="red",
             line_width=3,
             annotation_text=f"Predicción: {resultado['predicha']:.2f}",
-            annotation_position="top left"
+            annotation_position="bottom left",
+            annotation=dict(font=dict(color="#1A494C"))
         )
         
         fig_dist.update_layout(
