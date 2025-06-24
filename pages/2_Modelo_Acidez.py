@@ -358,44 +358,52 @@ df_acidez = pd.DataFrame({
 # ===== SECCIÓN 1: EXPLICACIÓN DEL MODELO =====
 st.header("🔬 Explicación del Modelo de Acidez")
 
-col1, col2 = st.columns([2, 1])
-
-with col1:
+# Explicación del modelo Random Forest
+import json
+try:
+    with open("models/artifacts/model_info_acidez.json", "r") as f:
+        model_info = json.load(f)
     st.markdown("""
-    ### Ecuación del Modelo de Acidez
+    Este modelo utiliza un **Random Forest Regressor**, un conjunto de árboles de decisión entrenados sobre los datos históricos de acidez y daño del grano.
     
-    El modelo de acidez considera la relación entre degradación y formación de ácidos libres:
+    - **Tipo de modelo:** Árboles de decisión en ensamble (Random Forest)
+    - **Variables de entrada:**
+        - Daño térmico del grano (`gdc_mean_in`)
+        - Daño por hongos (`gdh_mean_in`)
+    - **Variable objetivo:** Acidez del aceite (`pct_oil_acidez_mean`)
+    - **Hiperparámetros principales:**
+        - `n_estimators`: {n_estimators}
+        - `max_depth`: {max_depth}
+        - `min_samples_leaf`: {min_samples_leaf}
+        - `min_samples_split`: {min_samples_split}
+        - `max_features`: {max_features:.2f}
     
-    **A(D) = A₀ + ΔA(D) × Fₜ**
-    
-    Donde:
-    - **A(D)**: Acidez total en función de la degradación
-    - **A₀**: Acidez base del grano fresco (mg KOH/g)
-    - **ΔA(D)**: Incremento de acidez = D × α × Fₜ
-    - **D**: Porcentaje de degradación (0-1)
-    - **α**: Factor de sensibilidad de acidez
-    - **Fₜ**: Factor de temperatura = 1 + (T - T₀) × β
-    - **T₀**: Temperatura de referencia (20°C)
-    - **β**: Sensibilidad a temperatura
-    """)
+    El modelo aprende reglas a partir de los datos para predecir la acidez esperada según el daño observado. Puedes ver el árbol más representativo a continuación.
+    """.format(
+        n_estimators=model_info['best_params']['n_estimators'],
+        max_depth=model_info['best_params']['max_depth'],
+        min_samples_leaf=model_info['best_params']['min_samples_leaf'],
+        min_samples_split=model_info['best_params']['min_samples_split'],
+        max_features=model_info['best_params']['max_features']
+    ))
+except Exception:
+    st.warning("No se pudo cargar la información del modelo.")
 
-with col2:
-    st.info(f"""
-    **Parámetros Actuales:**
-    
-    - **Acidez Base:** {acidez_base} mg KOH/g
-    - **Factor Acidez:** {factor_acidez}
-    - **Temperatura:** {temperatura_acidez}°C
-    - **Factor Temp:** {factor_temp_acidez}
-    - **Acidez Máx:** 5.0 mg KOH/g
-    """)
+# Mostrar reglas del árbol más representativo
+try:
+    with open("models/artifacts/tree_rules_acidez.txt", "r") as f:
+        tree_rules = f.read()
+    with st.expander("Ver árbol más representativo del modelo Random Forest"):
+        st.code(tree_rules, language="text")
+except FileNotFoundError:
+    st.warning("No se encontraron las reglas del árbol representativo. Ejecuta el entrenamiento para generarlas.")
 
 # ===== SECCIÓN 2: GRÁFICOS DE ACIDEZ =====
-st.header("📈 Visualización del Modelo de Acidez")
+st.header("📈 Análisis de Distribuciones de Datos")
 
 
 st.markdown("""
-### Análisis de Distribuciones de Datos
+### 
 
 A continuación se muestran las distribuciones de las variables relacionadas con la acidez del aceite, 
 basadas en datos reales de análisis de granos de soya:
@@ -425,34 +433,7 @@ except FileNotFoundError:
 
 
        
-        
-  
-# ===== SECCIÓN 6: TABLA DE RESULTADOS =====
-st.header("📋 Resultados Detallados")
 
-# Crear tabla con puntos clave de degradación
-puntos_degradacion = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99]
-resultados_acidez = []
-for deg in puntos_degradacion:
-    acidez = modelo_acidez_cientifico(deg/100, acidez_base, factor_acidez, temperatura_acidez, factor_temp_acidez)
-    incremento = acidez - acidez_base
-    if acidez < 1.0:
-        calidad = "Calidad Excelente (<1.0 mg KOH/g)"
-        color = "🟢"
-    elif 1.0 <= acidez < 2.0:
-        calidad = "Calidad Buena (1.0-2.0 mg KOH/g)"
-        color = "🟡"
-    else:
-        calidad = "Calidad Crítica (>2.0 mg KOH/g)"
-        color = "🔴"
-    resultados_acidez.append({
-        'Degradación (%)': f"{deg:.0f}%",
-        'Acidez (mg KOH/g)': f"{acidez:.2f}",
-        'Incremento (mg KOH/g)': f"+{incremento:.2f}",
-        'Calidad': f"{color} {calidad}"
-    })
-df_resultados = pd.DataFrame(resultados_acidez)
-st.dataframe(df_resultados, use_container_width=True)
 
 # ===== SECCIÓN 6.5: ANÁLISIS DEL MODELO ML =====
 if model is not None:

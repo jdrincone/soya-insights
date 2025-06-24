@@ -14,6 +14,7 @@ import joblib
 import os
 import json
 from datetime import datetime
+from sklearn.tree import export_text
 
 # Colores corporativos
 CORPORATE_COLORS = {
@@ -317,7 +318,13 @@ def main():
     
     # 7. Guardar artefactos
     save_artifacts(model, metrics, feats, targets)
-    
+
+    # 8. Extraer reglas del árbol más representativo (primer árbol)
+    tree_rules = export_text(model.estimators_[0], feature_names=list(X.columns))
+    with open("models/artifacts/tree_rules_acidez.txt", "w") as f:
+        f.write(tree_rules)
+    print("✅ Reglas del árbol guardadas en models/artifacts/tree_rules_acidez.txt")
+
     print("\n" + "=" * 60)
     print("🎉 ¡Entrenamiento completado exitosamente!")
     print(f"📊 R² en test: {metrics['test']['r2']:.4f}")

@@ -5,7 +5,7 @@
         "gdh_mean_in"
     ],
     "target": "pct_oil_acidez_mean",
-    "training_date": "2025-06-24T14:50:40.830186",
+    "training_date": "2025-06-24T16:09:18.060856",
     "best_params": {
         "bootstrap": true,
         "ccp_alpha": 0.0,
