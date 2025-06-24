@@ -4,6 +4,16 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+import streamlit.components.v1 as components
+import os
+
+# Colores corporativos
+CORPORATE_COLORS = {
+    "verde_oscuro": "#1A494C",      # rgb(26,73,76)
+    "verde_claro": "#94AF92",       # rgb(148,175,146)
+    "verde_muy_claro": "#E6ECD8",   # rgb(230,236,216)
+    "gris_neutro": "#C9C9C9"        # rgb(201,201,201)
+}
 
 st.set_page_config(
     page_title="Modelo de Proteína - Soya Insights",
@@ -32,47 +42,16 @@ factor_temp_proteina = st.sidebar.slider("Factor de Temperatura para Proteína",
 proteina_minima = st.sidebar.slider("Proteína Mínima (%)", 20.0, 30.0, 25.0, step=0.5,
                                    help="Contenido mínimo de proteína después de degradación")
 
-# Función del modelo científico de proteína
-def modelo_proteina_cientifico(degradacion, proteina_base, factor_perdida, temperatura, factor_temp, proteina_min):
-    """
-    Modelo científico de cambio de proteína soluble en función de la degradación del grano
-    
-    Parámetros:
-    - degradacion: porcentaje de degradación (0-1)
-    - proteina_base: contenido inicial de proteína (%)
-    - factor_perdida: sensibilidad de la pérdida de proteína
-    - temperatura: temperatura en °C
-    - factor_temp: efecto de la temperatura en la proteína
-    - proteina_min: contenido mínimo de proteína (%)
-    
-    Retorna: contenido de proteína (%)
-    """
-    # Temperatura de referencia
-    temp_ref = 20
-    
-    # Factor de temperatura (efecto sobre la degradación de proteínas)
-    factor_temp_efecto = 1 + (temperatura - temp_ref) * factor_temp * 0.01
-    
-    # Pérdida de proteína por degradación (modelo no lineal)
-    # La pérdida es más rápida al inicio y se estabiliza
-    perdida_proteina = degradacion * factor_perdida * factor_temp_efecto * (1 + degradacion * 0.5)
-    
-    # Proteína total
-    proteina_total = proteina_base - perdida_proteina
-    
-    # Límite mínimo de proteína
-    return max(proteina_total, proteina_min)
-
 # Calcular datos para gráficos
-degradaciones = np.arange(0, degradacion_max/100 + 0.01, 0.01)
-proteinas = [modelo_proteina_cientifico(deg, proteina_base, factor_perdida_proteina, temperatura_proteina, factor_temp_proteina, proteina_minima) 
-            for deg in degradaciones]
+# degradaciones = np.arange(0, degradacion_max/100 + 0.01, 0.01)
+degradaciones = np.arange(0, degradacion_max + 0.01, 0.5)  # degradacion en %
+proteinas = 70.828 - 0.225 * degradaciones
 
 # Crear DataFrame para análisis
 df_proteina = pd.DataFrame({
-    'Degradación (%)': [d * 100 for d in degradaciones],
+    'Degradación (%)': degradaciones,
     'Proteína (%)': proteinas,
-    'Pérdida Proteína (%)': [proteina_base - p for p in proteinas]
+    'Pérdida Proteína (%)': 70.828 - proteinas
 })
 
 # ===== SECCIÓN 1: EXPLICACIÓN DEL MODELO =====
@@ -111,135 +90,102 @@ with col2:
     - **Proteína Mín:** {proteina_minima}%
     """)
 
-# ===== SECCIÓN 2: GRÁFICOS DE PROTEÍNA =====
-st.header("📈 Visualización del Modelo de Proteína")
+# ===== SECCIÓN 2: DISTRIBUCIONES DE DATOS REALES =====
+st.header("📊 Distribuciones de Datos Reales")
 
-# Gráfico principal de proteína
-fig_proteina = go.Figure()
+st.markdown("""
+A continuación se muestran las distribuciones de proteína soluble y daño total de grano basadas en datos reales de laboratorio.
+""")
 
-fig_proteina.add_trace(go.Scatter(
-    x=df_proteina['Degradación (%)'],
-    y=df_proteina['Proteína (%)'],
-    mode='lines+markers',
-    name='Proteína Total',
-    line=dict(color='green', width=3),
-    fill='tonexty'
-))
+# Ruta base de las gráficas
+plots_path = "models/plots"
 
-# Agregar línea de proteína base
-fig_proteina.add_hline(
-    y=proteina_base, 
-    line_dash="dash", 
-    line_color="blue",
-    annotation_text=f"Proteína Base: {proteina_base}%"
-)
+# Distribuciones en 2 columnas
+col1, col2 = st.columns(2)
 
-# Agregar línea de proteína mínima
-fig_proteina.add_hline(
-    y=proteina_minima, 
-    line_dash="dash", 
-    line_color="red",
-    annotation_text=f"Proteína Mínima: {proteina_minima}%"
-)
+with col1:
+    st.subheader("**Distribución de Soluble Protein (%)**")
+    st.caption("Histograma de la distribución de proteína soluble en las muestras. La línea vertical indica el valor promedio observado.")
+    components.html(open(os.path.join(plots_path, "soluble_protein_distribution.html")).read(), height=420)
 
-# Agregar zonas de calidad
-fig_proteina.add_hrect(
-    y0=proteina_minima, y1=35, 
-    fillcolor="red", opacity=0.2,
-    annotation_text="Calidad Crítica"
-)
-fig_proteina.add_hrect(
-    y0=35, y1=38, 
-    fillcolor="orange", opacity=0.2,
-    annotation_text="Calidad Moderada"
-)
-fig_proteina.add_hrect(
-    y0=38, y1=proteina_base, 
-    fillcolor="green", opacity=0.2,
-    annotation_text="Calidad Excelente"
-)
+with col2:
+    st.subheader("**Distribución de Total Grain Damage (%)**")
+    st.caption("Histograma de la distribución del daño total de grano en las muestras. La línea vertical indica el valor promedio observado.")
+    components.html(open(os.path.join(plots_path, "grain_damage_distribution.html")).read(), height=420)
 
-fig_proteina.update_layout(
-    title="Cambio de Proteína Soluble en Función de la Degradación del Grano",
-    xaxis_title="Degradación (%)",
-    yaxis_title="Proteína (%)",
-    height=500,
-    hovermode='x unified'
-)
-
-st.plotly_chart(fig_proteina, use_container_width=True)
-
-# ===== SECCIÓN 3: ANÁLISIS DE SENSIBILIDAD =====
-st.header("🔍 Análisis de Sensibilidad")
+# ===== SECCIÓN 3: CALCULADORA INTERACTIVA =====
+st.header("🧮 Calculadora de Proteína")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # Sensibilidad a temperatura
-    temps = np.arange(15, 41, 5)
-    proteina_temp = [modelo_proteina_cientifico(0.5, proteina_base, factor_perdida_proteina, t, factor_temp_proteina, proteina_minima) 
-                    for t in temps]
-    
-    fig_temp = px.line(
-        x=temps,
-        y=proteina_temp,
-        title="Sensibilidad a la Temperatura (50% degradación)",
-        labels={'x': 'Temperatura (°C)', 'y': 'Proteína (%)'}
+    degradacion_calc = st.slider(
+        "Degradación del grano (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=30.0,
+        step=5.0,
+        help="Selecciona el nivel de degradación para calcular la proteína"
     )
-    fig_temp.update_traces(line_color='red', line_width=3)
-    st.plotly_chart(fig_temp, use_container_width=True)
+    
+    # Usar la ecuación lineal para el cálculo
+    proteina_calculada = 70.828 - 0.225 * degradacion_calc
+    perdida_calculada = 70.828 - proteina_calculada
+    
+    st.metric(
+        label="Proteína Calculada",
+        value=f"{proteina_calculada:.1f}%",
+        delta=f"-{perdida_calculada:.1f}%"
+    )
+    st.info(f"""
+    **Fórmula utilizada:**
+    Proteína = 70.828 - 0.225 × Degradación
+    **Cálculo actual:**
+    Proteína = 70.828 - 0.225 × {degradacion_calc} = {proteina_calculada:.1f}%
+    """)
 
 with col2:
-    # Sensibilidad al factor de pérdida
-    factores = np.arange(10.0, 25.1, 2.0)
-    proteina_factor = [modelo_proteina_cientifico(0.5, proteina_base, f, temperatura_proteina, factor_temp_proteina, proteina_minima) 
-                      for f in factores]
-    
-    fig_factor = px.line(
-        x=factores,
-        y=proteina_factor,
-        title="Sensibilidad al Factor de Pérdida (50% degradación)",
-        labels={'x': 'Factor de Pérdida', 'y': 'Proteína (%)'}
-    )
-    fig_factor.update_traces(line_color='purple', line_width=3)
-    st.plotly_chart(fig_factor, use_container_width=True)
+    # Semáforo según el rango de proteína soluble (ecuación lineal)
+    if proteina_calculada > 80:
+        st.success("🟥 > 80% Torta Soya Cruda")
+    elif 75 <= proteina_calculada <= 80:
+        st.warning("🟩 Entre 75% y 80% Torta Soya Cocida")
+    else:
+        st.error("🟨 < 75% Torta Soya Muy Cocida")
 
-# ===== SECCIÓN 4: TABLA DE RESULTADOS =====
+# ===== SECCIÓN 5: GRÁFICA DE DISPERSIÓN DE PROTEÍNA SOLUBLE VS DAÑO TOTAL DE GRANO =====
+st.header("📈 Dispersión de Proteína Soluble vs Daño Total de Grano (Datos Reales)")
+st.caption("Esta gráfica muestra la dispersión real de los datos de laboratorio entre el daño total del grano y el porcentaje de proteína soluble. Cada punto representa una muestra real.")
+components.html(open(os.path.join(plots_path, "soluble_protein_vs_grain_damage.html")).read(), height=520)
+
+# ===== SECCIÓN 7: TABLA DE RESULTADOS =====
 st.header("📋 Resultados Detallados")
 
 # Crear tabla con puntos clave de degradación
-puntos_degradacion = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+puntos_degradacion = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 resultados_proteina = []
-
 for deg in puntos_degradacion:
-    proteina = modelo_proteina_cientifico(deg, proteina_base, factor_perdida_proteina, temperatura_proteina, factor_temp_proteina, proteina_minima)
-    perdida = proteina_base - proteina
-    
-    # Determinar calidad basada en proteína
-    if proteina >= 38:
-        calidad = "Excelente"
-        color = "🟢"
-    elif proteina >= 35:
-        calidad = "Buena"
-        color = "🟡"
-    elif proteina >= 30:
-        calidad = "Moderada"
-        color = "🟠"
+    proteina = 70.828 - 0.225 * deg
+    perdida = 70.828 - proteina
+    if proteina > 80:
+        calidad = "Torta Soya Cruda (>80%)"
+        color = "🟥"
+    elif 75 <= proteina <= 80:
+        calidad = "Torta Soya Cocida (75-80%)"
+        color = "🟩"
     else:
-        calidad = "Crítica"
-        color = "🔴"
-    
+        calidad = "Torta Soya Muy Cocida (<75%)"
+        color = "🟨"
     resultados_proteina.append({
-        'Degradación (%)': f"{deg * 100:.0f}%",
+        'Degradación (%)': f"{deg:.0f}%",
         'Proteína (%)': f"{proteina:.1f}%",
         'Pérdida (%)': f"-{perdida:.1f}%",
         'Calidad': f"{color} {calidad}"
     })
-
 df_resultados = pd.DataFrame(resultados_proteina)
 st.dataframe(df_resultados, use_container_width=True)
 
-# ===== SECCIÓN 5: INTERPRETACIÓN CIENTÍFICA =====
+# ===== SECCIÓN 8: INTERPRETACIÓN CIENTÍFICA =====
 st.header("🧪 Interpretación Científica")
 
 st.markdown("""
@@ -274,49 +220,6 @@ st.markdown("""
 - **Alimentos funcionales**: Pérdida de funcionalidad tecnológica
 - **Suplementos nutricionales**: Reducción del valor nutricional
 """)
-
-# ===== SECCIÓN 6: CALCULADORA INTERACTIVA =====
-st.header("🧮 Calculadora de Proteína")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    degradacion_calc = st.slider(
-        "Degradación del grano (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=30.0,
-        step=5.0,
-        help="Selecciona el nivel de degradación para calcular la proteína"
-    )
-    
-    proteina_calculada = modelo_proteina_cientifico(
-        degradacion_calc/100, 
-        proteina_base, 
-        factor_perdida_proteina, 
-        temperatura_proteina, 
-        factor_temp_proteina, 
-        proteina_minima
-    )
-    
-    perdida_calculada = proteina_base - proteina_calculada
-    
-    st.metric(
-        label="Proteína Calculada",
-        value=f"{proteina_calculada:.1f}%",
-        delta=f"-{perdida_calculada:.1f}%"
-    )
-
-with col2:
-    # Mostrar interpretación de la proteína calculada
-    if proteina_calculada >= 38:
-        st.success("✅ **Calidad Excelente** - Apto para proteína aislada")
-    elif proteina_calculada >= 35:
-        st.warning("⚠️ **Calidad Buena** - Apto para concentrado de proteína")
-    elif proteina_calculada >= 30:
-        st.error("🚨 **Calidad Moderada** - Apto para harina de soya")
-    else:
-        st.error("🚨 **Calidad Crítica** - Uso limitado")
 
 # Footer
 st.markdown("---")
