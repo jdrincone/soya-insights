@@ -185,41 +185,109 @@ for deg in puntos_degradacion:
 df_resultados = pd.DataFrame(resultados_proteina)
 st.dataframe(df_resultados, use_container_width=True)
 
-# ===== SECCIÓN 8: INTERPRETACIÓN CIENTÍFICA =====
-st.header("🧪 Interpretación Científica")
+# ===== SECCIÓN: ANÁLISIS Y ARGUMENTACIÓN CIENTÍFICA =====
+st.header("🧪 Análisis del Comportamiento de la Proteína Soluble en Función del Daño del Grano de Soya")
 
-st.markdown("""
-### Mecanismos de Pérdida de Proteína
+st.subheader("📚 Resumen desde la literatura")
+st.markdown('''
+La proteína soluble (PS) en la torta de soya es un indicador clave de la calidad nutricional y del procesamiento térmico del grano. Diversos estudios han demostrado que:
 
-1. **Desnaturalización Térmica**: Las proteínas se desnaturalizan a temperaturas elevadas
-2. **Degradación Enzimática**: Las proteasas naturales degradan las proteínas
-3. **Actividad Microbiana**: Microorganismos consumen proteínas como fuente de energía
-4. **Oxidación de Proteínas**: Los radicales libres oxidan aminoácidos
-5. **Reacciones de Maillard**: Reacciones entre proteínas y azúcares reductores
+- El **daño del grano de soya** (ya sea físico o térmico) provoca **desnaturalización de proteínas** y reduce su solubilidad.
+- La **solubilidad de la proteína** se correlaciona con su digestibilidad en animales monogástricos.
+- Procesos como secado, extrusión o tostado mal controlados pueden generar **pérdidas funcionales** importantes.
+- Rangos de proteína soluble considerados óptimos en torta de soya están típicamente entre **60% y 80%**, cuando se mide sobre la proteína total mediante métodos estandarizados.
+''')
 
-### Factores que Afectan la Proteína
+st.subheader("📈 Resultados del modelo con datos reales")
+st.markdown('''
+Se analizó una base de datos experimental con mediciones de:
 
-- **Temperatura elevada**: Acelera desnaturalización y reacciones químicas
-- **Humedad alta**: Favorece actividad enzimática y microbiana
-- **Tiempo de almacenamiento**: Acumulación de efectos degradativos
-- **Exposición al oxígeno**: Acelera oxidación de proteínas
-- **Daño mecánico**: Facilita acceso de enzimas y microorganismos
+- **GDT**: Daño total del grano (porcentaje).
+- **PS**: Porcentaje de proteína soluble medida por química húmeda.
 
-### Estándares de Calidad por Proteína
+Luego de eliminar valores atípicos mediante análisis de residuos (±2σ), se ajustó un modelo lineal simple con los datos válidos:
 
-- **≥ 38%**: Calidad excelente, apto para proteína aislada
-- **35-38%**: Calidad buena, apto para concentrado de proteína
-- **30-35%**: Calidad moderada, apto para harina de soya
-- **< 30%**: Calidad crítica, uso limitado
+```
+PS = 70.828 − 0.225 × GDT
+```
 
-### Impacto en Productos Derivados
+Este modelo presentó un coeficiente de determinación:
 
-- **Proteína aislada**: Requiere alto contenido de proteína (>90% en base seca)
-- **Concentrado de proteína**: Requiere 65-90% de proteína
-- **Harina de soya**: Requiere 44-50% de proteína
-- **Alimentos funcionales**: Pérdida de funcionalidad tecnológica
-- **Suplementos nutricionales**: Reducción del valor nutricional
-""")
+```
+R² = 0.674
+```
+
+Lo que significa que **el 67.4% de la variabilidad** en la proteína soluble se explica por el nivel de daño total del grano.
+''')
+
+st.subheader("🔎 Interpretación técnica")
+st.markdown('''
+- Existe una **relación negativa moderada y estadísticamente significativa**: a mayor daño del grano, menor proporción de proteína soluble.
+- Esto es consistente con procesos de **desnaturalización térmica** y formación de agregados insolubles.
+- El modelo permite anticipar posibles pérdidas en la calidad funcional de la torta según el nivel de daño observado.
+''')
+
+st.subheader("🧠 Variables adicionales recomendadas")
+st.markdown("Para mejorar la predicción de PS, se recomienda incorporar otras variables que capturen aspectos críticos del proceso y la materia prima. A continuación se detallan:")
+
+st.table([
+    {"Variable sugerida": "tiempo_almac_bolsas", "Justificación técnica": "Después de cocinada la soya, esta se almacena en bolsas por que la sobrecocina la soya.", "Tipo": "Numérica"},
+    {"Variable sugerida": "temp_proceso_max", "Justificación técnica": "A mayor temperatura, mayor desnaturalización proteica.", "Tipo": "Numérica"},
+    {"Variable sugerida": "tiempo_extrusion", "Justificación técnica": "Aumenta la exposición al calor; potencia la desnaturalización.", "Tipo": "Numérica"},
+    {"Variable sugerida": "humedad_entrada", "Justificación técnica": "Afecta la transferencia de calor y la tasa de daño.", "Tipo": "Numérica"},
+    {"Variable sugerida": "fibra, cenizas", "Justificación técnica": "Modulan la absorción térmica y la composición estructural.", "Tipo": "Numérica"},
+    #{"Variable sugerida": "proteina_total_quim/NIR", "Justificación técnica": "Permite contextualizar el % soluble sobre una base más precisa.", "Tipo": "Numérica"},
+    #{"Variable sugerida": "metodo_prot_total", "Justificación técnica": "Ajusta posibles sesgos por tipo de medición (química húmeda vs NIR).", "Tipo": "Categórica"},
+    {"Variable sugerida": "sol_KOH, indice_color", "Justificación técnica": "Indicadores directos del daño térmico; mejor correlación con la desnaturalización.", "Tipo": "Numérica"},
+    #{"Variable sugerida": "variedad, proveedor", "Justificación técnica": "Diferencias genéticas o estructurales en la composición de la proteína del grano.", "Tipo": "Categórica"},
+])
+
+
+st.subheader("🧮 Modelo Avanzado Propuesto")
+
+st.markdown(r'''
+Un modelo avanzado para predecir la proteína soluble (PS) puede incorporar múltiples variables críticas del proceso y la materia prima, permitiendo capturar mejor la complejidad del fenómeno:
+
+$$
+\begin{align*}
+PS =\ & \beta_0 \\
+   & - \beta_1 \times GDT \\
+   & - \beta_2 \times temp\_proceso\_max \\
+   & - \beta_3 \times tiempo\_extrusion \\
+   & - \beta_4 \times humedad\_entrada \\
+   & - \beta_5 \times fibra \\
+   & - \beta_6 \times cenizas \\
+   & - \beta_7 \times tiempo\_almac\_bolsas \\
+   & - \beta_8 \times sol\_KOH \\
+   & - \beta_9 \times indice\_color \\
+   & + \gamma_1 \times variedad \\
+   & + \gamma_2 \times proveedor \\
+   & + \varepsilon
+\end{align*}
+$$
+
+**Donde:**
+- $PS$: Porcentaje de proteína soluble
+- $GDT$: Daño total del grano (%)
+- $temp\_proceso\_max$: Temperatura máxima de proceso (°C)
+- $tiempo\_extrusion$: Tiempo de extrusión (min)
+- $humedad\_entrada$: Humedad de entrada (%)
+- $fibra$, $cenizas$: Composición estructural (%)
+- $tiempo\_almac\_bolsas$: Tiempo de almacenamiento en bolsas (días)
+- $sol\_KOH$, $indice\_color$: Indicadores de daño térmico
+- $variedad$, $proveedor$: Variables categóricas (genética/procedencia)
+- $\beta_0...\beta_9, \gamma_1, \gamma_2$: Coeficientes a estimar
+- $\varepsilon$: Término de error aleatorio
+
+Este modelo permitiría anticipar la calidad funcional de la torta de soya considerando no solo el daño del grano, sino también las condiciones térmicas, estructurales y de almacenamiento, así como la variabilidad genética y de origen.
+''')
+
+st.subheader("✅ Conclusión")
+st.markdown('''
+> Existe una **relación clara, cuantificable y consistente** entre el daño del grano de soya y la reducción de su proteína soluble. Este indicador puede ser utilizado como herramienta de control de calidad del proceso industrial y también como proxy de digestibilidad en productos terminados.
+>
+> Para obtener **modelos más robustos**, se recomienda incluir variables térmicas, estructurales y composicionales que afectan directamente la fracción de proteína soluble.
+''')
 
 # Footer
 st.markdown("---")
