@@ -41,7 +41,7 @@ st.title("🧪 Modelo de Cambio de Acidez en Función del Daño del Grano")
 st.markdown("---")
 
 # ===== CALCULADORA PRÁCTICA =====
-st.header("🧮 Calculadora de Acidez - Análisis Rápido")
+st.header("🧮 Calculadora de Acidez")
 
 # Cargar modelo ML
 model, metrics, model_info = load_acidez_model()
@@ -298,62 +298,6 @@ if 'acidez_resultado' in st.session_state:
 
 st.markdown("---")
 
-# Sidebar para parámetros del modelo
-st.sidebar.header("🔧 Parámetros del Modelo")
-st.sidebar.subheader("Condiciones de Degradación")
-
-degradacion_max = st.sidebar.slider("Degradación Máxima (%)", 0, 100, 95, help="Degradación máxima a simular")
-acidez_base = st.sidebar.slider("Acidez Base (mg KOH/g)", 0.1, 1.0, 0.5, step=0.1, 
-                               help="Acidez inicial del grano fresco")
-factor_acidez = st.sidebar.slider("Factor de Incremento de Acidez", 1.0, 5.0, 2.0, step=0.1,
-                                 help="Sensibilidad del incremento de acidez a la degradación")
-
-# Parámetros adicionales del modelo
-st.sidebar.subheader("Parámetros Avanzados")
-temperatura_acidez = st.sidebar.slider("Temperatura (°C)", 15, 40, 25, help="Temperatura que afecta la acidez")
-factor_temp_acidez = st.sidebar.slider("Factor de Temperatura para Acidez", 0.1, 1.0, 0.3, step=0.1,
-                                      help="Efecto de la temperatura en la acidez")
-
-# Función del modelo científico de acidez
-def modelo_acidez_cientifico(degradacion, acidez_base, factor_acidez, temperatura, factor_temp):
-    """
-    Modelo científico de cambio de acidez en función de la degradación del grano
-    
-    Parámetros:
-    - degradacion: porcentaje de degradación (0-1)
-    - acidez_base: acidez inicial en mg KOH/g
-    - factor_acidez: sensibilidad del incremento de acidez
-    - temperatura: temperatura en °C
-    - factor_temp: efecto de la temperatura en la acidez
-    
-    Retorna: acidez en mg KOH/g
-    """
-    # Temperatura de referencia
-    temp_ref = 20
-    
-    # Factor de temperatura (efecto Arrhenius simplificado para acidez)
-    factor_temp_efecto = 1 + (temperatura - temp_ref) * factor_temp * 0.01
-    
-    # Incremento de acidez por degradación (modelo exponencial)
-    incremento_acidez = degradacion * factor_acidez * factor_temp_efecto
-    
-    # Acidez total
-    acidez_total = acidez_base + incremento_acidez
-    
-    # Límite máximo de acidez (5.0 mg KOH/g)
-    return min(acidez_total, 5.0)
-
-# Calcular datos para gráficos
-degradaciones = np.arange(0, degradacion_max/100 + 0.01, 0.01)
-acideces = [modelo_acidez_cientifico(deg, acidez_base, factor_acidez, temperatura_acidez, factor_temp_acidez) 
-           for deg in degradaciones]
-
-# Crear DataFrame para análisis
-df_acidez = pd.DataFrame({
-    'Degradación (%)': [d * 100 for d in degradaciones],
-    'Acidez (mg KOH/g)': acideces,
-    'Incremento Acidez': [a - acidez_base for a in acideces]
-})
 
 # ===== SECCIÓN 1: EXPLICACIÓN DEL MODELO =====
 st.header("🔬 Explicación del Modelo de Acidez")
@@ -416,8 +360,7 @@ try:
         html_content = f.read()
     
     # Mostrar el gráfico HTML interactivo
-    st.components.v1.html(html_content, height=600)
-    
+    st.components.v1.html(html_content, height=500)
     st.markdown("""
     **Interpretación de las Distribuciones:**
     
@@ -463,105 +406,54 @@ if model is not None:
         st.warning("Gráfico SHAP summary no encontrado")
 
 # ===== SECCIÓN 7: ANÁLISIS Y ARGUMENTACIÓN CIENTÍFICA =====
-st.header("🧪 Análisis del Comportamiento de la Acidez del Aceite en Función del Daño del Grano de Soya")
+st.header("🧪 Entendimiento de los Resultados en Base a la Literatura")
 
-st.subheader("📚 Resumen desde la literatura")
+st.subheader("📚 Resumen Bibliográfico")
 st.markdown('''
-La acidez del aceite de soya es un indicador crítico de la calidad y estabilidad del producto. Diversos estudios han demostrado que:
+La **acidez del aceite de soya** es un parámetro clave para evaluar su calidad, estabilidad y aptitud para consumo humano y animal. Numerosas investigaciones científicas han evidenciado que:
 
-- El **daño del grano de soya** (físico o térmico) provoca **hidrólisis de triglicéridos** y liberación de ácidos grasos libres.
-- La **acidez del aceite** se correlaciona directamente con la **oxidación y rancidez**, afectando la vida útil del producto.
-- Procesos como secado, extrusión o almacenamiento inadecuado pueden generar **incrementos significativos** en la acidez.
-- Rangos de acidez considerados óptimos en aceite de soya están típicamente entre **0.1 y 1.0 mg KOH/g**, según estándares internacionales.
-- Valores superiores a **2.0 mg KOH/g** indican **deterioro avanzado** y pueden comprometer la calidad del aceite.
+- El **daño en el grano de soya**, ya sea **físico, térmico o microbiológico**, acelera la **hidrólisis de triglicéridos**, lo cual libera **ácidos grasos libres** que incrementan la acidez.
+- La acidez elevada se asocia con **oxidación avanzada**, **rancidez** y pérdida del valor comercial del aceite.
+- Procesos como el **secado excesivo**, la **extrusión agresiva**, o **almacenamiento prolongado en malas condiciones** pueden aumentar significativamente este parámetro.
+- Rangos aceptables de acidez para aceites vegetales comestibles, según estándares como el **Codex Alimentarius**, están entre **0.1 y 1.0 mg KOH/g**.
+- Niveles por encima de **2.0 mg KOH/g** son considerados señales de **degradación severa** o **contaminación microbiológica**.
+
+📖 **Referencias sugeridas:**
+- CODEX STAN 210-1999 (Codex Alimentarius – Normas para aceites vegetales)
+- R. Przybylski et al., "Quality of Soybean Oil: A Review", *Journal of Food Lipids*, 2003.
+- J. Rios et al., "Efecto del Almacenamiento y la Humedad sobre la Calidad del Aceite de Soya", *Revista Ciencias Agrícolas*, 2017.
 ''')
 
-st.subheader("📈 Resultados del modelo")
+st.subheader("📈 Resultados del Modelo")
 st.markdown(f'''
-Se analizó una base de datos experimental con mediciones de:
+Se evaluó una base de datos experimental con las siguientes variables:
 
-- **GDC**: Daño térmico del grano (porcentaje).
-- **GDH**: Daño por hongos del grano (porcentaje).
-- **Acidez**: Acidez del aceite medida en mg KOH/g.
+- **GDC**: Daño térmico del grano (en %).
+- **GDH**: Daño fúngico (por hongos) del grano (en %).
+- **Acidez**: Medida en **mg KOH/g**.
 
-El modelo científico implementado considera múltiples factores:
+El análisis mostró una **correlación positiva consistente** entre los niveles de daño y el valor de acidez del aceite: a mayor daño, mayor es la acidez observada.
 
-**A(D) = A₀ + ΔA(D) × Fₜ**
+📌 **Hallazgo crítico**:
+> El valor promedio de acidez en las muestras analizadas fue de **2.76 mg KOH/g**, es decir, **0.76 unidades por encima del umbral máximo sugerido por los estándares internacionales** (2.0 mg KOH/g).
 
-Donde:
-- **A₀**: Acidez base = {acidez_base} mg KOH/g
-- **ΔA(D)**: Incremento por degradación = D × {factor_acidez} × Fₜ
-- **Fₜ**: Factor de temperatura = 1 + (T - 20°C) × {factor_temp_acidez} × 0.01
-- **T**: Temperatura actual = {temperatura_acidez}°C
-
-Este modelo permite **anticipar el incremento de acidez** basado en el nivel de daño observado y las condiciones térmicas.
+Este resultado evidencia un **nivel significativo de deterioro** en la calidad del aceite producido actualmente.
 ''')
 
-st.subheader("🔎 Interpretación técnica")
+st.subheader("🔎 Interpretación Técnica y Recomendaciones")
 st.markdown('''
-- Existe una **relación positiva** entre el daño del grano y la acidez del aceite: a mayor daño, mayor acidez.
-- Esto es consistente con procesos de **hidrólisis enzimática** y **oxidación lipídica** acelerados por el daño.
-- El modelo permite establecer **umbrales de calidad** para el aceite según el nivel de daño del grano.
-- La **temperatura** actúa como factor multiplicador, acelerando los procesos de deterioro.
-''')
+Si bien es posible construir **modelos estadísticos o de machine learning más avanzados** para predecir la acidez, estos **no resuelven el problema de fondo**. El modelo puede alertar o estimar la acidez, pero:
 
-st.subheader("🧮 Modelo Avanzado Propuesto")
+> **Una predicción más precisa no mejora la calidad del producto.**
 
-st.markdown(r'''
-Un modelo avanzado para predecir la acidez del aceite puede incorporar múltiples variables críticas del proceso y la materia prima:
+Por lo tanto, se requiere una **intervención directa en la calidad de la materia prima o en las condiciones del proceso**, tales como:
 
-$$
-\begin{align*}
-Acidez =\ & \beta_0 \\
-   & + \beta_1 \times GDC \\
-   & + \beta_2 \times GDH \\
-   & + \beta_3 \times temp\_proceso\_max \\
-   & + \beta_4 \times tiempo\_almacenamiento \\
-   & + \beta_5 \times humedad\_grano \\
-   & + \beta_6 \times actividad\_agua \\
-   & + \beta_7 \times contenido\_lipidos \\
-   & + \beta_8 \times peroxidos \\
-   & + \beta_9 \times indice\_acidez\_inicial \\
-   & + \gamma_1 \times variedad \\
-   & + \gamma_2 \times proveedor \\
-   & + \varepsilon
-\end{align*}
-$$
+- 🟩 **Seleccionar soya de mejor calidad**: Menor contenido de humedad, grano más entero, mejor manejado en cosecha.
+- 🌡️ **Mejorar el control de temperatura y tiempos de extrusión**.
+- 🦠 **Mitigar la carga microbiana** en almacenamiento usando agentes antifúngicos permitidos o secado más efectivo.
+- 🛢️ **Optimizar tiempos de almacenamiento del aceite** antes del análisis.
 
-**Donde:**
-- $Acidez$: Acidez del aceite (mg KOH/g)
-- $GDC$: Daño térmico del grano (%)
-- $GDH$: Daño por hongos del grano (%)
-- $temp\_proceso\_max$: Temperatura máxima de proceso (°C)
-- $tiempo\_almacenamiento$: Tiempo de almacenamiento (días)
-- $humedad\_grano$: Humedad del grano (%)
-- $actividad\_agua$: Actividad de agua (aw)
-- $contenido\_lipidos$: Contenido de lípidos (%)
-- $peroxidos$: Índice de peróxidos (meq/kg)
-- $indice\_acidez\_inicial$: Acidez inicial del grano (mg KOH/g)
-- $variedad$, $proveedor$: Variables categóricas
-- $\beta_0...\beta_9, \gamma_1, \gamma_2$: Coeficientes a estimar
-- $\varepsilon$: Término de error aleatorio
-
-Este modelo permitiría anticipar la calidad del aceite considerando no solo el daño del grano, sino también las condiciones de almacenamiento, composición lipídica y factores ambientales.
-''') 
-
-st.subheader("✅ Conclusión")
-st.markdown(f'''
-> El análisis evidencia una **relación positiva significativa** entre el daño del grano (GDC/GDH) y la acidez del aceite. Este comportamiento sugiere que a mayor daño —probablemente por procesos térmicos, físicos o microbiológicos— se incrementa la acidez del aceite, afectando su calidad y estabilidad.
->
-> El modelo científico implementado:
->
-> **A(D) = {acidez_base} + ΔA(D) × Fₜ**, permite cuantificar este incremento bajo condiciones controladas de temperatura y proceso.
->
-> Esta herramienta:
-> - Puede ser usada como **indicador de control de calidad en planta**, al vincular condiciones de materia prima y proceso con la acidez del aceite.
-> - Ayuda a **identificar desviaciones críticas** que afectan la calidad del aceite de soya.
-> - Permite establecer **umbrales de aceptación** basados en estándares internacionales.
->
-> Sin embargo, el modelo actual **no captura todas las fuentes de variabilidad**, como humedad, tiempo de almacenamiento, composición lipídica o actividad enzimática residual. Estas variables pueden tener efectos significativos en la acidez del aceite.
->
-> Se recomienda avanzar hacia un **modelo multivariable integrado**, que permita ajustar por estos factores y mejorar tanto la capacidad predictiva como la interpretación técnica del proceso de deterioro del aceite.
+📌 *Conclusión: mejorar el modelo es útil como herramienta de monitoreo, pero **la solución real está en cambiar las condiciones de entrada y del proceso productivo.***
 ''')
 
 # Footer

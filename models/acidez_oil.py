@@ -83,7 +83,7 @@ for i, (var, color) in enumerate(zip(variables, colores)):
 
 fig.update_layout(
     title="Distribuciones",
-    height=500, width=1200,
+    height=400, width=900,
     plot_bgcolor='white',
     paper_bgcolor='white',
     font=dict(family="Arial, sans-serif", size=12, color=CORPORATE_COLORS["verde_oscuro"]),
