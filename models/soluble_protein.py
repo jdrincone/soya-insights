@@ -99,14 +99,14 @@ def scatter_reg_final(
     )
     
     # Guardar gráfica
-    fig.write_html("models/plots/soluble_protein_vs_grain_damage.html")
-    fig.write_image("models/plots/soluble_protein_vs_grain_damage.png", width=800, height=500)
+    fig.write_html("imagenes/soluble_protein_vs_grain_damage.html")
+    fig.write_image("imagenes/soluble_protein_vs_grain_damage.png", width=800, height=500)
     
     fig.show()
 
 
 # Cargar datos y procesar
-df = pd.read_csv("models/data/datos_gdt_protein.csv")
+df = pd.read_csv("data/datos_gdt_protein.csv")
 df = df.rename(columns={"pct_soluble_protein_quim": "PS"})
 
 
@@ -137,7 +137,7 @@ df_outliers["grupo"] = "outlier"
 df_total = pd.concat([df_clean, df_outliers], ignore_index=True)
 
 # Crear directorio para guardar gráficas si no existe
-os.makedirs("models/plots", exist_ok=True)
+os.makedirs("imagenes", exist_ok=True)
 
 # Graficar con Plotly
 scatter_reg_final(df_total, x="GDT", y="PS", hue="grupo", model=model_clean, palette=PALETTE)
@@ -183,8 +183,8 @@ fig_residuos.update_layout(
 )
 
 # Guardar gráfica de residuos
-fig_residuos.write_html("models/plots/residual_analysis.html")
-fig_residuos.write_image("models/plots/residual_analysis.png", width=800, height=400)
+fig_residuos.write_html("imagenes/residual_analysis.html")
+fig_residuos.write_image("imagenes/residual_analysis.png", width=800, height=400)
 
 fig_residuos.show()
 
@@ -207,8 +207,8 @@ fig_hist_residuos.update_layout(
 )
 
 # Guardar gráfica de distribución de residuos
-fig_hist_residuos.write_html("models/plots/residuals_distribution.html")
-fig_hist_residuos.write_image("models/plots/residuals_distribution.png", width=800, height=400)
+fig_hist_residuos.write_html("imagenes/residuals_distribution.html")
+fig_hist_residuos.write_image("imagenes/residuals_distribution.png", width=800, height=400)
 
 fig_hist_residuos.show()
 
@@ -247,8 +247,8 @@ fig_dist_ps.add_annotation(
 )
 
 # Guardar gráfica de distribución de PS
-fig_dist_ps.write_html("models/plots/soluble_protein_distribution.html")
-fig_dist_ps.write_image("models/plots/soluble_protein_distribution.png", width=800, height=400)
+fig_dist_ps.write_html("imagenes/soluble_protein_distribution.html")
+fig_dist_ps.write_image("imagenes/soluble_protein_distribution.png", width=800, height=400)
 
 fig_dist_ps.show()
 
@@ -280,14 +280,14 @@ fig_dist_gdt.add_vline(
 )
 
 # Guardar gráfica de distribución de GDT
-fig_dist_gdt.write_html("models/plots/grain_damage_distribution.html")
-fig_dist_gdt.write_image("models/plots/grain_damage_distribution.png", width=800, height=400)
+fig_dist_gdt.write_html("imagenes/grain_damage_distribution.html")
+fig_dist_gdt.write_image("imagenes/grain_damage_distribution.png", width=800, height=400)
 
 fig_dist_gdt.show()
 
 print("\n🎉 Análisis completado! Todos los gráficos se han generado con Plotly.")
 print("📊 Los gráficos son interactivos - puedes hacer zoom, pan y hover para más detalles.")
-print("💾 Gráficos guardados en la carpeta 'models/plots/':")
+print("💾 Gráficos guardados en la carpeta 'imagenes/':")
 print("   - soluble_protein_vs_grain_damage.html/png")
 print("   - residual_analysis.html/png")
 print("   - residuals_distribution.html/png")

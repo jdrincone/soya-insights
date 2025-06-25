@@ -29,7 +29,7 @@ def load_and_prepare_data():
     print("📊 Cargando datos...")
     
     # Cargar datos
-    df = pd.read_csv("models/data/data_acidez.csv")
+    df = pd.read_csv("data/data_acidez.csv")
     
     # Definir features y target
     feats = ['gdc_mean_in', 'gdh_mean_in']
@@ -136,7 +136,7 @@ def create_shap_analysis(model, X_train, X_test, feats):
                      color=plt.cm.Set1(0))
     plt.title("SHAP Summary Plot - Acidez del Aceite", fontsize=14, fontweight='bold')
     plt.tight_layout()
-    plt.savefig("models/artifacts/shap_summary_acidez.png", dpi=300, bbox_inches='tight')
+    plt.savefig("imagenes/shap_summary_acidez.png", dpi=300, bbox_inches='tight')
     plt.close()
     
     # Gráfico de barras de importancia
@@ -145,7 +145,7 @@ def create_shap_analysis(model, X_train, X_test, feats):
                      color=CORPORATE_COLORS["verde_oscuro"])
     plt.title("SHAP Feature Importance - Acidez del Aceite", fontsize=14, fontweight='bold')
     plt.tight_layout()
-    plt.savefig("models/artifacts/shap_importance_acidez.png", dpi=300, bbox_inches='tight')
+    plt.savefig("imagenes/shap_importance_acidez.png", dpi=300, bbox_inches='tight')
     plt.close()
     
     # Valores SHAP para uso posterior
@@ -212,8 +212,8 @@ def create_visualizations(df, feats, targets, y_train_pred, y_test_pred, X_train
         paper_bgcolor='white'
     )
     
-    fig.write_html("models/plots/predicciones_vs_reales_acidez.html")
-    fig.write_image("models/plots/predicciones_vs_reales_acidez.png", width=1000, height=500)
+    fig.write_html("imagenes/predicciones_vs_reales_acidez.html")
+    fig.write_image("imagenes/predicciones_vs_reales_acidez.png", width=1000, height=500)
     
     # 2. Residuos
     residuos_train = y_train - y_train_pred
@@ -249,10 +249,10 @@ def create_visualizations(df, feats, targets, y_train_pred, y_test_pred, X_train
         paper_bgcolor='white'
     )
     
-    fig_res.write_html("models/plots/residuos_acidez.html")
-    fig_res.write_image("models/plots/residuos_acidez.png", width=1000, height=500)
+    fig_res.write_html("imagenes/residuos_acidez.html")
+    fig_res.write_image("imagenes/residuos_acidez.png", width=1000, height=500)
     
-    print("✅ Visualizaciones guardadas en models/plots/")
+    print("✅ Visualizaciones guardadas en imagenes/")
 
 def save_artifacts(model, metrics, feats, targets):
     """Guardar todos los artefactos del modelo"""
@@ -330,7 +330,7 @@ def main():
     print(f"📊 R² en test: {metrics['test']['r2']:.4f}")
     print(f"📊 RMSE en test: {metrics['test']['rmse']:.4f}")
     print("📁 Todos los artefactos guardados en models/artifacts/")
-    print("📊 Visualizaciones guardadas en models/plots/")
+    print("📊 Visualizaciones guardadas en imagenes/")
 
 if __name__ == "__main__":
     main() 

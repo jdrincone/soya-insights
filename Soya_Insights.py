@@ -56,7 +56,7 @@ def load_models():
     try:
         from sklearn.linear_model import LinearRegression
         # Cargar datos de proteína para entrenar modelo simple
-        df_protein = pd.read_csv("models/data/datos_gdt_protein.csv")
+        df_protein = pd.read_csv("data/datos_gdt_protein.csv")
         X_protein = df_protein[["GDT"]].values
         y_protein = df_protein["pct_soluble_protein_quim"].values
         

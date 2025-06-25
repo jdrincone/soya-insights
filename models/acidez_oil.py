@@ -21,7 +21,7 @@ CORPORATE_COLORS = {
 }
 
 # Leer datos
-df = pd.read_csv("models/data/data_acidez.csv")
+df = pd.read_csv("data/data_acidez.csv")
 
 # Variables y colores
 variables = ["gdc_mean_in", "gdh_mean_in", "pct_oil_acidez_mean"]
@@ -35,7 +35,7 @@ colores = [
 titulos_subplots = ["GDC (Daño Térmico)", "GDH (Daño por Hongos)", "Acidez del Aceite (%)"]
 
 # Crear directorio para guardar gráficas si no existe
-os.makedirs("models/plots", exist_ok=True)
+os.makedirs("imagenes", exist_ok=True)
 
 # Crear subplots 1x3
 fig = sp.make_subplots(rows=1, cols=3, subplot_titles=titulos_subplots)
@@ -96,7 +96,7 @@ for i in range(1, 4):
     fig.update_yaxes(title_text="Frecuencia", row=1, col=i)
 
 # Guardar la figura
-fig.write_html("models/plots/subplot_distribuciones_acidez_oil.html")
-fig.write_image("models/plots/subplot_distribuciones_acidez_oil.png", width=1200, height=500)
+fig.write_html("imagenes/subplot_distribuciones_acidez_oil.html")
+fig.write_image("imagenes/subplot_distribuciones_acidez_oil.png", width=1200, height=500)
 
 fig.show()

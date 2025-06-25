@@ -151,12 +151,12 @@ with col2:
 # ===== SECCIÓN 2: DISTRIBUCIONES DE DATOS =====
 st.header("📊 Distribuciones de Datos")
 
+# Definir ruta de gráficos
+plots_path = "imagenes"
+
 st.markdown("""
 A continuación se muestran las distribuciones de proteína soluble y daño total de grano basadas en datos reales de laboratorio.
 """)
-
-# Ruta base de las gráficas
-plots_path = "models/plots"
 
 # Distribuciones en 2 columnas
 col1, col2 = st.columns(2)

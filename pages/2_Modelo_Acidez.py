@@ -48,7 +48,7 @@ model, metrics, model_info = load_acidez_model()
 
 if model is not None:
     # Obtener valor medio de acidez de los datos
-    df_acidez_data = pd.read_csv("models/data/data_acidez.csv")
+    df_acidez_data = pd.read_csv("data/data_acidez.csv")
     acidez_media = df_acidez_data['pct_oil_acidez_mean'].mean()
     
     col1, col2 = st.columns([2, 1])
@@ -369,7 +369,7 @@ basadas en datos reales de análisis de granos de soya:
 # Mostrar la imagen generada
 try:
     # Leer el archivo HTML
-    with open("models/plots/subplot_distribuciones_acidez_oil.html", "r", encoding="utf-8") as f:
+    with open("imagenes/subplot_distribuciones_acidez_oil.html", "r", encoding="utf-8") as f:
         html_content = f.read()
     
     # Mostrar el gráfico HTML interactivo
@@ -398,25 +398,19 @@ if model is not None:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Predicciones vs Valores Reales")
-        try:
-            components.html(open("models/plots/predicciones_vs_reales_acidez.html").read(), height=500)
-        except FileNotFoundError:
-            st.warning("Gráfico de predicciones no encontrado")
+        st.subheader("**Predicciones vs Valores Reales**")
+        st.caption("Gráfico de dispersión que muestra la relación entre los valores reales y predichos de acidez.")
+        components.html(open("imagenes/predicciones_vs_reales_acidez.html").read(), height=500)
     
     with col2:
-        st.subheader("📈 Análisis de Residuos")
-        try:
-            components.html(open("models/plots/residuos_acidez.html").read(), height=400)
-        except FileNotFoundError:
-            st.warning("Gráfico de residuos no encontrado")
+        st.subheader("**Análisis de Residuos**")
+        st.caption("Gráfico de residuos que muestra la diferencia entre valores reales y predichos.")
+        components.html(open("imagenes/residuos_acidez.html").read(), height=400)
     
     # Gráficos SHAP
-    st.subheader("🎯 Análisis SHAP")
-    try:
-        st.image("models/artifacts/shap_importance_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite")
-    except FileNotFoundError:
-        st.warning("Gráfico SHAP summary no encontrado")
+    st.subheader("📊 Análisis SHAP - Importancia de Variables")
+    st.caption("Gráfico que muestra la importancia de cada variable en la predicción de acidez.")
+    st.image("imagenes/shap_importance_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite")
 
 # ===== SECCIÓN 7: ANÁLISIS Y ARGUMENTACIÓN CIENTÍFICA =====
 st.header("🧪 Entendimiento de los Resultados en Base a la Literatura")
