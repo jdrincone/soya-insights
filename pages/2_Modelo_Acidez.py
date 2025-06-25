@@ -59,19 +59,19 @@ if model is not None:
         # Inputs para GDC y GDH
         gdc_input = st.number_input(
             "GDC - Daño Térmico (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=30.0,
-            step=0.1,
+            min_value=0,
+            max_value=100,
+            value=30,
+            step=1,
             help="Ingrese el porcentaje de daño térmico observado"
         )
         
         gdh_input = st.number_input(
             "GDH - Daño por Hongos (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=15.0,
-            step=0.1,
+            min_value=0,
+            max_value=100,
+            value=15,
+            step=1,
             help="Ingrese el porcentaje de daño por hongos observado"
         )
         
@@ -145,18 +145,29 @@ if model is not None:
         else:
             st.info("💡 Ingrese valores y haga clic en 'Calcular' para ver el análisis")
     
-    # Mostrar información del modelo
-    with st.expander("ℹ️ Información del Modelo"):
-        st.markdown(f"""
-        **Modelo Random Forest:**
-        - **Precisión (R²):** {metrics['test']['r2']:.1%}
-        - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
-        - **Valor medio histórico:** {acidez_media:.2f} mg KOH/g
-        
-        **Importancia de Variables:**
-        - **GDC (Térmico):** {model_info['feature_importance']['gdc_mean_in']:.1%}
-        - **GDH (Hongos):** {model_info['feature_importance']['gdh_mean_in']:.1%}
-        """)
+    # Explicación y métricas del modelo Random Forest en un expander
+    import json
+    try:
+        with open("models/artifacts/model_info_acidez.json", "r") as f:
+            model_info = json.load(f)
+        with open("models/artifacts/metrics_acidez.json", "r") as f:
+            metrics = json.load(f)
+        acidez_media = metrics['test']['mean'] if 'mean' in metrics['test'] else 0
+        fecha_entrenamiento = model_info.get('training_date', 'N/A')[:10]
+        with st.expander("ℹ️ Información del Modelo"):
+            st.markdown(f"""
+            **Modelo Random Forest:**
+            - **Fecha de entrenamiento:** {fecha_entrenamiento}
+            - **Precisión (R²):** {metrics['test']['r2']:.1%}
+            - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
+            - **Valor medio histórico:** {2.76:.2f} mg KOH/g
+            
+            **Importancia de Variables:**
+            - **GDC (Térmico):** {model_info['feature_importance']['gdc_mean_in']:.1%}
+            - **GDH (Hongos):** {model_info['feature_importance']['gdh_mean_in']:.1%}
+            """)
+    except Exception:
+        st.warning("No se pudo cargar la información del modelo.")
 
 else:
     st.error("❌ No se pudo cargar el modelo. Verifique que el archivo `models/artifacts/random_forest_acidez.pkl` existe.")
@@ -389,7 +400,7 @@ if model is not None:
     with col1:
         st.subheader("📊 Predicciones vs Valores Reales")
         try:
-            components.html(open("models/plots/predicciones_vs_reales_acidez.html").read(), height=400)
+            components.html(open("models/plots/predicciones_vs_reales_acidez.html").read(), height=500)
         except FileNotFoundError:
             st.warning("Gráfico de predicciones no encontrado")
     
@@ -401,7 +412,7 @@ if model is not None:
             st.warning("Gráfico de residuos no encontrado")
     
     # Gráficos SHAP
-    st.subheader("🎯 Análisis SHAP - Summary Plot")
+    st.subheader("🎯 Análisis SHAP")
     try:
         st.image("models/artifacts/shap_importance_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite")
     except FileNotFoundError:

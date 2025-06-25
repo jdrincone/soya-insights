@@ -1,239 +1,184 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+import seaborn as sns
+import matplotlib.pyplot as plt
+from utils import load_and_prepare_data, fit_quantile_regression, plot_best_fit, PALETTE
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+import numpy as np
+from sklearn.metrics import r2_score
 
+# Configuración de la página
 st.set_page_config(
-    page_title="Modelo de Degradación - Soya Insights",
-    page_icon="📉",
+    page_title="Análisis de Regresión Cuantílica",
+    page_icon="📊",
     layout="wide"
 )
 
-st.title("📉 Modelo de Degradación del Grano en el Tiempo")
-st.markdown("---")
+st.title("Análisis Degradación de la Calidad del Grano en función de los meses de almacenamiento")
 
-# Sidebar para parámetros del modelo
-st.sidebar.header("🔧 Parámetros del Modelo")
-st.sidebar.subheader("Condiciones Ambientales")
-
-temperatura = st.sidebar.slider("Temperatura (°C)", 15, 40, 25, help="Temperatura de almacenamiento")
-humedad = st.sidebar.slider("Humedad Relativa (%)", 40, 90, 60, help="Humedad relativa del ambiente")
-tiempo_max = st.sidebar.slider("Período de Análisis (meses)", 1, 24, 12, help="Meses a simular")
-
-# Parámetros del modelo científico
-st.sidebar.subheader("Parámetros del Modelo")
-factor_temp = st.sidebar.slider("Factor de Temperatura", 0.01, 0.10, 0.05, step=0.01, 
-                               help="Sensibilidad del grano a la temperatura")
-factor_humedad = st.sidebar.slider("Factor de Humedad", 0.005, 0.05, 0.02, step=0.005,
-                                  help="Sensibilidad del grano a la humedad")
-constante_degradacion = st.sidebar.slider("Constante de Degradación Base", 0.0005, 0.002, 0.001, step=0.0001,
-                                         help="Tasa base de degradación por día")
-
-# Función del modelo científico de degradación
-def modelo_degradacion_cientifico(temperatura, humedad, tiempo_dias, factor_temp, factor_humedad, constante_base):
-    """
-    Modelo científico de degradación de granos de soya
-    
-    Parámetros:
-    - temperatura: temperatura en °C
-    - humedad: humedad relativa en %
-    - tiempo_dias: tiempo de almacenamiento en días
-    - factor_temp: sensibilidad a temperatura
-    - factor_humedad: sensibilidad a humedad
-    - constante_base: tasa base de degradación
-    
-    Retorna: porcentaje de degradación (0-1)
-    """
-    # Temperatura de referencia (20°C)
-    temp_ref = 20
-    
-    # Humedad de referencia (50%)
-    hum_ref = 50
-    
-    # Factor de temperatura (efecto Arrhenius simplificado)
-    factor_temp_efecto = 1 + (temperatura - temp_ref) * factor_temp
-    
-    # Factor de humedad (efecto exponencial)
-    factor_humedad_efecto = 1 + (humedad - hum_ref) * factor_humedad
-    
-    # Degradación base (efecto del tiempo)
-    degradacion_base = constante_base * tiempo_dias
-    
-    # Degradación total con efectos combinados
-    degradacion_total = degradacion_base * factor_temp_efecto * factor_humedad_efecto
-    
-    # Límite máximo de degradación (95%)
-    return min(degradacion_total, 0.95)
-
-# Calcular datos para gráficos
-dias = np.arange(0, tiempo_max * 30 + 1, 1)
-degradaciones = [modelo_degradacion_cientifico(temperatura, humedad, dia, factor_temp, factor_humedad, constante_degradacion) 
-                for dia in dias]
-
-# Crear DataFrame para análisis
-df_degradacion = pd.DataFrame({
-    'Días': dias,
-    'Meses': dias / 30,
-    'Degradación (%)': [d * 100 for d in degradaciones],
-    'Calidad Remanente (%)': [(1 - d) * 100 for d in degradaciones]
-})
-
-# ===== SECCIÓN 1: EXPLICACIÓN DEL MODELO =====
-st.header("🔬 Explicación del Modelo Científico")
-
-col1, col2 = st.columns([2, 1])
-
-with col1:
+with st.expander("ℹ️ Descripción del Proceso"):
     st.markdown("""
-    ### Ecuación del Modelo de Degradación
-    
-    El modelo utiliza una ecuación que combina múltiples factores ambientales:
-    
-    **D(t) = D₀ × Fₜ × Fₕ × t**
-    
-    Donde:
-    - **D(t)**: Degradación total en el tiempo t
-    - **D₀**: Constante de degradación base (por día)
-    - **Fₜ**: Factor de temperatura = 1 + (T - T₀) × αₜ
-    - **Fₕ**: Factor de humedad = 1 + (H - H₀) × αₕ
-    - **t**: Tiempo en días
-    - **T₀**: Temperatura de referencia (20°C)
-    - **H₀**: Humedad de referencia (50%)
-    - **αₜ**: Sensibilidad a temperatura
-    - **αₕ**: Sensibilidad a humedad
+    1. **Carga de Datos**: Se cargan los datos desde el archivo 'Seguimiento de datos.xlsx'.
+    2. **Filtrado Muestras Válidas**: Se filtran muestras con más de 4 puntos.
+    3. **Filtrado de Puntos Válidos**: Se filtran los puntos que cumplen la condición de función monótona creciente (la media debe ser mayor o igual que el punto anterior).
+    4. **Ajuste de Modelos**: Se ajustan dos modelos a los puntos válidos:
+       - **Modelo Lineal**: Se ajusta una línea recta a los puntos.
+       - **Modelo Cuadrático**: Se ajusta una ecuación cuadrática a los puntos.
+    5. **Visualización de Resultados**: Se muestran los puntos válidos junto con los ajustes lineal y cuadrático, incluyendo las ecuaciones y los valores de R².
+    6. **Gráfica de la Media**: Se grafica la media vs Fecha, mostrando solo los puntos válidos y el ajuste lineal entre ellos.
     """)
 
-with col2:
-    st.info(f"""
-    **Parámetros Actuales:**
-    
-    - **Temperatura:** {temperatura}°C
-    - **Humedad:** {humedad}%
-    - **Factor Temp:** {factor_temp}
-    - **Factor Hum:** {factor_humedad}
-    - **Constante Base:** {constante_degradacion}
-    """)
-
-# ===== SECCIÓN 2: GRÁFICOS DE DEGRADACIÓN =====
-st.header("📈 Visualización del Modelo")
-
-# Gráfico principal de degradación
-fig_degradacion = go.Figure()
-
-fig_degradacion.add_trace(go.Scatter(
-    x=df_degradacion['Meses'],
-    y=df_degradacion['Degradación (%)'],
-    mode='lines+markers',
-    name='Degradación (%)',
-    line=dict(color='red', width=3),
-    fill='tonexty'
-))
-
-fig_degradacion.add_trace(go.Scatter(
-    x=df_degradacion['Meses'],
-    y=df_degradacion['Calidad Remanente (%)'],
-    mode='lines+markers',
-    name='Calidad Remanente (%)',
-    line=dict(color='green', width=3),
-    fill='tonexty'
-))
-
-fig_degradacion.update_layout(
-    title="Evolución de la Degradación del Grano en el Tiempo",
-    xaxis_title="Meses de Almacenamiento",
-    yaxis_title="Porcentaje (%)",
-    height=500,
-    hovermode='x unified'
-)
-
-st.plotly_chart(fig_degradacion, use_container_width=True)
-
-# ===== SECCIÓN 3: ANÁLISIS DE SENSIBILIDAD =====
-st.header("🔍 Análisis de Sensibilidad")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    # Sensibilidad a temperatura
-    temps = np.arange(15, 41, 5)
-    degrad_temp = [modelo_degradacion_cientifico(t, humedad, 180, factor_temp, factor_humedad, constante_degradacion) * 100 
-                  for t in temps]
-    
-    fig_temp = px.line(
-        x=temps,
-        y=degrad_temp,
-        title="Sensibilidad a la Temperatura (6 meses)",
-        labels={'x': 'Temperatura (°C)', 'y': 'Degradación (%)'}
+try:
+    df = load_and_prepare_data("data/Seguimiento de datos.xlsx")
+    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    numeric_cols_no_fecha = [col for col in numeric_cols if col != "Fecha"]
+    st.sidebar.header("Parámetros de Análisis")
+    selected_column = st.sidebar.selectbox(
+        "Seleccione la columna a analizar:",
+        numeric_cols_no_fecha
     )
-    fig_temp.update_traces(line_color='orange', line_width=3)
-    st.plotly_chart(fig_temp, use_container_width=True)
 
-with col2:
-    # Sensibilidad a humedad
-    hums = np.arange(40, 91, 10)
-    degrad_hum = [modelo_degradacion_cientifico(temperatura, h, 180, factor_temp, factor_humedad, constante_degradacion) * 100 
-                 for h in hums]
-    
-    fig_hum = px.line(
-        x=hums,
-        y=degrad_hum,
-        title="Sensibilidad a la Humedad (6 meses)",
-        labels={'x': 'Humedad (%)', 'y': 'Degradación (%)'}
-    )
-    fig_hum.update_traces(line_color='blue', line_width=3)
-    st.plotly_chart(fig_hum, use_container_width=True)
+    with st.expander("📋 Datos Raw"):
+        st.dataframe(df)
 
-# ===== SECCIÓN 4: TABLA DE RESULTADOS =====
-st.header("📋 Resultados Detallados")
+    # Ajustar modelos y encontrar el mejor
+    results = fit_quantile_regression(df, selected_column, taus=[0.5])
+    best_model = results.loc[results.groupby('columna')['pseudo_r2'].idxmax()]
 
-# Crear tabla con puntos clave
-puntos_clave = [0, 1, 2, 3, 6, 9, 12, 18, 24]
-resultados_clave = []
+    with st.expander("📊 Comparación de Modelos"):
+        st.dataframe(results.sort_values('pseudo_r2', ascending=False))
 
-for mes in puntos_clave:
-    dias = mes * 30
-    degrad = modelo_degradacion_cientifico(temperatura, humedad, dias, factor_temp, factor_humedad, constante_degradacion)
-    calidad = 1 - degrad
-    
-    resultados_clave.append({
-        'Meses': mes,
-        'Días': dias,
-        'Degradación (%)': f"{degrad * 100:.2f}%",
-        'Calidad (%)': f"{calidad * 100:.2f}%",
-        'Estado': 'Excelente' if degrad < 0.1 else 'Buena' if degrad < 0.2 else 'Moderada' if degrad < 0.4 else 'Crítica'
-    })
+    # Graficar el mejor ajuste
+    st.subheader(f"Mejor ajuste para {selected_column}")
+    fig = plot_best_fit(df, selected_column, best_model.iloc[0])
+    st.pyplot(fig)
 
-df_resultados = pd.DataFrame(resultados_clave)
-st.dataframe(df_resultados, use_container_width=True)
+    # Calculadora para la columna seleccionada
+    with st.expander(f"🧮 Calculadora de Predicción - {selected_column}"):
+        mes_prediccion_columna = st.number_input(
+            f"Ingrese el mes para predecir el valor de {selected_column}:",
+            min_value=0,
+            max_value=50,
+            value=10,
+            step=1,
+            help="Ingrese el mes (ej: 8.5 para mes 8.5)",
+            key="mes_columna"
+        )
+        calcular_col = st.button("Calcular Predicción", key="btn_columna")
 
-# ===== SECCIÓN 5: INTERPRETACIÓN CIENTÍFICA =====
-st.header("🧪 Interpretación Científica")
+    if 'calcular_col' not in st.session_state:
+        st.session_state['calcular_col'] = False
+    if calcular_col:
+        st.session_state['calcular_col'] = True
+    if st.session_state['calcular_col']:
+        b0 = best_model.iloc[0]['b0']
+        b1 = best_model.iloc[0]['b1']
+        b2 = best_model.iloc[0]['b2']
+        modelo = best_model.iloc[0]['modelo']
+        pseudo_r2 = best_model.iloc[0]['pseudo_r2']
+        if modelo == "Lineal (orden 1)":
+            prediccion = b0 + b1 * mes_prediccion_columna
+            ecuacion = f"y = {b0:.4f} + {b1:.4f}x"
+        elif modelo == "Cuadrático (orden 2)":
+            prediccion = b0 + b1 * mes_prediccion_columna + b2 * (mes_prediccion_columna**2)
+            ecuacion = f"y = {b0:.4f} + {b1:.4f}x + {b2:.4f}x²"
+        elif modelo == "Logarítmico":
+            prediccion = b0 + b1 * np.log(mes_prediccion_columna)
+            ecuacion = f"y = {b0:.4f} + {b1:.4f}ln(x)"
+        st.metric(
+            label=f"Predicción para {selected_column}",
+            value=f"{prediccion:.2f}",
+            delta=f"R² = {pseudo_r2:.3f}"
+        )
+        st.markdown("**Detalles del modelo:**")
+        st.write(f"**Mejor Modelo:** {modelo}")
+        st.write(f"**Ecuación:** {ecuacion}")
+        st.write(f"**Pseudo R²:** {pseudo_r2:.4f}")
 
-st.markdown("""
-### Mecanismos de Degradación
+    # Calcular la media y filtrar puntos que no cumplen la condición de función monótona creciente
+    df["mean"] = df.drop(columns=["Fecha"]).mean(axis=1)
+    df_sorted = df.sort_values("Fecha")
+    df_sorted["valid"] = df_sorted["mean"].diff().fillna(0) >= 0
+    df_valid = df_sorted[df_sorted["valid"]]
 
-1. **Degradación Enzimática**: Las enzimas naturales del grano continúan activas durante el almacenamiento
-2. **Oxidación Lipídica**: Los ácidos grasos se oxidan, especialmente a temperaturas elevadas
-3. **Actividad Microbiana**: Hongos y bacterias proliferan en condiciones de alta humedad
-4. **Respiración del Grano**: El grano continúa respirando, consumiendo nutrientes
+    st.subheader("Ajuste de la media para todas las muestras (a partir del mes 8)")
+    fig_mean, ax_mean = plt.subplots(figsize=(12, 7))
+    df_valid_filtered = df_valid[df_valid["Fecha"] >= 7.5]
+    X = df_valid_filtered["Fecha"].values.reshape(-1, 1)
+    y = df_valid_filtered["mean"].values
+    mask = ~np.isnan(y)
+    X = X[mask]
+    y = y[mask]
+    linear_model = LinearRegression()
+    linear_model.fit(X, y)
+    y_linear = linear_model.predict(X)
+    poly = PolynomialFeatures(degree=2)
+    X_poly = poly.fit_transform(X)
+    quadratic_model = LinearRegression()
+    quadratic_model.fit(X_poly, y)
+    y_quadratic = quadratic_model.predict(X_poly)
+    r2_linear = r2_score(y, y_linear)
+    r2_quadratic = r2_score(y, y_quadratic)
+    fig_fits, ax_fits = plt.subplots(figsize=(12, 7))
+    sns.scatterplot(ax=ax_fits, x=df_valid_filtered["Fecha"][mask], y=df_valid_filtered["mean"][mask], color=PALETTE["mean"], label="Media (puntos válidos)")
+    ax_fits.plot(df_valid_filtered["Fecha"][mask], y_linear, color=PALETTE["ajuste"], label=f'Línea Recta: y = {linear_model.coef_[0]:.2f}x + {linear_model.intercept_:.2f} (R² = {r2_linear:.3f})')
+    ax_fits.plot(df_valid_filtered["Fecha"][mask], y_quadratic, color=PALETTE["median"], label=f'Cuadrática: y = {quadratic_model.coef_[2]:.2f}x² + {quadratic_model.coef_[1]:.2f}x + {quadratic_model.intercept_:.2f} (R² = {r2_quadratic:.3f})')
+    ax_fits.set_title("Ajuste Lineal y Cuadrático a la Media vs Fecha", fontsize=16)
+    ax_fits.set_xlabel("Fecha", fontsize=12)
+    ax_fits.set_ylabel("Media", fontsize=12)
+    ax_fits.legend(fontsize=11)
+    ax_fits.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig_fits)
 
-### Factores que Aceleran la Degradación
+    with st.expander("📝 Recomendaciones de Muestreado y adquisición de datos"):
+        st.markdown("""
+        - Se recomienda que el muestreo se realice cada 15 días calendario, tondando días reales.
+        - Todas las muestras deben de estar almacenadas en las mismas condiciones de temperatura y humedad.
+        """)
 
-- **Temperatura alta**: Acelera reacciones químicas y enzimáticas
-- **Humedad elevada**: Favorece crecimiento microbiano y actividad enzimática
-- **Tiempo prolongado**: Acumulación de efectos degradativos
-- **Daño mecánico**: Facilita entrada de oxígeno y microorganismos
+    # Calculadora de predicción de la media
+    with st.expander("🧮 Calculadora de Predicción de la Media"):
+        mes_prediccion = st.number_input(
+            "Ingrese el mes para predecir el valor medio:",
+            min_value=0,
+            max_value=50,
+            value=18,
+            step=1,
+            help="Ingrese el mes (ej: 8.5 para mes 8.5)",
+            key="mes_media"
+        )
+        calcular_media = st.button("Calcular Predicción", key="btn_media")
 
-### Indicadores de Calidad
+    if 'calcular_media' not in st.session_state:
+        st.session_state['calcular_media'] = False
+    if calcular_media:
+        st.session_state['calcular_media'] = True
+    if st.session_state['calcular_media']:
+        prediccion_lineal = linear_model.coef_[0] * mes_prediccion + linear_model.intercept_
+        prediccion_cuadratica = quadratic_model.coef_[2] * (mes_prediccion**2) + quadratic_model.coef_[1] * mes_prediccion + quadratic_model.intercept_
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(
+                label="Predicción Lineal",
+                value=f"{prediccion_lineal:.2f}",
+                delta=f"R² = {r2_linear:.3f}"
+            )
+        with col2:
+            st.metric(
+                label="Predicción Cuadrática", 
+                value=f"{prediccion_cuadratica:.2f}",
+                delta=f"R² = {r2_quadratic:.3f}"
+            )
+        st.markdown("**Ecuaciones Utilizadas:**")
+        st.write(f"**Ecuación Lineal:** y = {linear_model.coef_[0]:.4f}x + {linear_model.intercept_:.4f}")
+        st.write(f"**Ecuación Cuadrática:** y = {quadratic_model.coef_[2]:.4f}x² + {quadratic_model.coef_[1]:.4f}x + {quadratic_model.intercept_:.4f}")
 
-- **Degradación < 10%**: Calidad excelente, apto para cualquier uso
-- **Degradación 10-20%**: Calidad buena, requiere monitoreo
-- **Degradación 20-40%**: Calidad moderada, considerar procesamiento
-- **Degradación > 40%**: Calidad crítica, uso limitado
-""")
-
-# Footer
-st.markdown("---")
-st.markdown("*Modelo de Degradación - Soya Insights*") 
+except Exception as e:
+    st.error(f"Error al cargar los datos: {str(e)}")
+    st.info("Asegúrese de que el archivo 'Seguimiento de datos.xlsx' está en la carpeta 'data/'") 

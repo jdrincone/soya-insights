@@ -39,6 +39,53 @@ df_proteina = pd.DataFrame({
     'Pérdida Proteína (%)': 70.828 - proteinas
 })
 
+
+# ===== SECCIÓN 3: CALCULADORA INTERACTIVA =====
+st.header("🧮 Calculadora de Proteína")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    degradacion_calc = st.slider(
+        "Degradación del grano (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=30.0,
+        step=5.0,
+        help="Selecciona el nivel de degradación para calcular la proteína"
+    )
+    
+    # Usar la ecuación lineal para el cálculo
+    proteina_calculada = 70.828 - 0.225 * degradacion_calc
+    perdida_calculada = 70.828 - proteina_calculada
+    
+    st.metric(
+        label="Proteína Calculada",
+        value=f"{proteina_calculada:.1f}%",
+        delta=f"-{perdida_calculada:.1f}%"
+    )
+    with st.expander("ℹ️ Detalles del cálculo de proteína"):
+        st.markdown(f"""
+        **Fórmula utilizada:**
+         - **P**(Degradación) = 70.828 - 0.225 × Degradación
+         - **Cálculo actual:** 70.828 - 0.225 × {degradacion_calc} = {proteina_calculada:.1f}%
+        - **R²** = 0.674
+        """)
+        # Si tienes el valor de R², muéstralo aquí
+        try:
+            st.markdown(f"**R² del modelo:** {r2_proteina:.3f}")
+        except NameError:
+            pass
+
+with col2:
+    # Semáforo según el rango de proteína soluble (ecuación lineal)
+    if proteina_calculada > 80:
+        st.success("🟥 > 80% Torta Soya Cruda")
+    elif 75 <= proteina_calculada <= 80:
+        st.warning("🟩 Entre 75% y 80% Torta Soya Cocida")
+    else:
+        st.error("🟨 < 75% Torta Soya Muy Cocida")
+
 # ===== SECCIÓN 1: EXPLICACIÓN DEL MODELO =====
 st.header("🔬 Explicación del Modelo de Proteína")
 
@@ -101,8 +148,8 @@ with col2:
     - **Humedad:** {13.14}%
     """)
 
-# ===== SECCIÓN 2: DISTRIBUCIONES DE DATOS REALES =====
-st.header("📊 Distribuciones de Datos Reales")
+# ===== SECCIÓN 2: DISTRIBUCIONES DE DATOS =====
+st.header("📊 Distribuciones de Datos")
 
 st.markdown("""
 A continuación se muestran las distribuciones de proteína soluble y daño total de grano basadas en datos reales de laboratorio.
@@ -124,45 +171,6 @@ with col2:
     st.caption("Histograma de la distribución del daño total de grano en las muestras. La línea vertical indica el valor promedio observado.")
     components.html(open(os.path.join(plots_path, "grain_damage_distribution.html")).read(), height=420)
 
-# ===== SECCIÓN 3: CALCULADORA INTERACTIVA =====
-st.header("🧮 Calculadora de Proteína")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    degradacion_calc = st.slider(
-        "Degradación del grano (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=30.0,
-        step=5.0,
-        help="Selecciona el nivel de degradación para calcular la proteína"
-    )
-    
-    # Usar la ecuación lineal para el cálculo
-    proteina_calculada = 70.828 - 0.225 * degradacion_calc
-    perdida_calculada = 70.828 - proteina_calculada
-    
-    st.metric(
-        label="Proteína Calculada",
-        value=f"{proteina_calculada:.1f}%",
-        delta=f"-{perdida_calculada:.1f}%"
-    )
-    st.info(f"""
-    **Fórmula utilizada:**
-    Proteína = 70.828 - 0.225 × Degradación
-    **Cálculo actual:**
-    Proteína = 70.828 - 0.225 × {degradacion_calc} = {proteina_calculada:.1f}%
-    """)
-
-with col2:
-    # Semáforo según el rango de proteína soluble (ecuación lineal)
-    if proteina_calculada > 80:
-        st.success("🟥 > 80% Torta Soya Cruda")
-    elif 75 <= proteina_calculada <= 80:
-        st.warning("🟩 Entre 75% y 80% Torta Soya Cocida")
-    else:
-        st.error("🟨 < 75% Torta Soya Muy Cocida")
 
 # ===== SECCIÓN 5: GRÁFICA DE DISPERSIÓN DE PROTEÍNA SOLUBLE VS DAÑO TOTAL DE GRANO =====
 st.header("📈 Dispersión de Proteína Soluble vs Daño Total de Grano (Datos Reales)")
@@ -209,27 +217,7 @@ La proteína soluble (PS) en la torta de soya es un indicador clave de la calida
 - Rangos de proteína soluble considerados óptimos en torta de soya están típicamente entre **60% y 80%**, cuando se mide sobre la proteína total mediante métodos estandarizados.
 ''')
 
-st.subheader("📈 Resultados del modelo")
-st.markdown('''
-Se analizó una base de datos experimental con mediciones de:
 
-- **GDT**: Daño total del grano (porcentaje).
-- **PS**: Porcentaje de proteína soluble medida por química húmeda.
-
-Luego de eliminar valores atípicos mediante análisis de residuos (±2σ), se ajustó un modelo lineal simple con los datos válidos:
-
-```
-PS = 70.828 − 0.225 × GDT
-```
-
-Este modelo presentó un coeficiente de determinación:
-
-```
-R² = 0.674
-```
-
-Lo que significa que **el 67.4% de la variabilidad** en la proteína soluble se explica por el nivel de daño total del grano.
-''')
 
 st.subheader("🔎 Interpretación técnica")
 st.markdown('''
