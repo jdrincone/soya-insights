@@ -139,7 +139,7 @@ with col2:
         value=f"{calidad_remanente:.1f}%",
         delta=f"{(100 - gdt) - 85:.1f}%" if gdt < 15 else None
     )
-    st.caption("💡 Porcentaje de calidad que queda en los granos después del daño total (GDT).")
+    st.caption("💡 Porcentaje de calidad que queda en los granos después del daño total (GDT), se toma como base un  85% Calidad Remanente.")
 
 with col3:
     st.metric(
@@ -249,6 +249,12 @@ fig.add_trace(go.Scatter(
 # Líneas de referencia
 fig.add_hline(y=1.0, line_dash="dash", line_color="orange", 
               annotation_text="Límite Acidez", yref="y")
+
+# Línea vertical para el promedio de GDT de la empresa
+fig.add_vline(x=38.16, line_dash="dash", line_color="purple", line_width=2,
+              annotation_text="Promedio Empresa (38.16%)", 
+              annotation_position="top right",
+              annotation=dict(font=dict(color="purple", size=12)))
 
 # Punto actual
 fig.add_trace(go.Scatter(
@@ -383,6 +389,12 @@ fig_ecuacion_base.add_trace(go.Scatter(
     hovertemplate='Tiempo: %{x:.1f} meses<br>Daño: %{y:.2f}%<extra></extra>'
 ))
 
+# Línea horizontal para el promedio de GDT de la empresa
+fig_ecuacion_base.add_hline(y=38.16, line_dash="dash", line_color="purple", line_width=2,
+                            annotation_text="Promedio Empresa (38.16%)", 
+                            annotation_position="right",
+                            annotation=dict(font=dict(color="purple", size=12)))
+
 fig_ecuacion_base.update_layout(
     title="Ecuación Base del Daño del Grano (7-36 meses)",
     xaxis_title="Tiempo (meses)",
@@ -480,10 +492,17 @@ st.info(f"""
 
 # Recomendaciones por nivel de GDT
 if gdt < 15:
+    st.success("**Antes de cualquier acción basada en el modelo se debe mejorar/controlar y garantizar el manejo de la soya, luego tomar acciones (agregar efectos externos en pos del negocio)**")
+
     st.success("**✅ Mantener condiciones actuales** - Los granos están en excelente estado.")
+
 elif gdt < 35:
-    st.warning("**⚠️ Implementar mejoras inmediatas** - Considerar rotación de inventario.")
+    st.markdown("**Antes de cualquier acción basada en el modelo se debe mejorar/controlar y garantizar el manejo de la soya, luego tomar acciones (agregar efectos externos en pos del negocio)**")
+
+    st.success("**⚠️ Implementar mejoras inmediatas** - Considerar rotación de inventario.")
 else:
+    st.success("**Antes de cualquier acción basada en el modelo se debe mejorar/controlar y garantizar el manejo de la soya, luego tomar acciones (agregar efectos externos en pos del negocio)**")
+
     st.error("**🚨 Acción urgente requerida** - Tener cuidado, el contenido nutricional de la muestra de granos no cumple los criterios mínimos para una buena dieta.")
 
 # ===== INFORMACIÓN TÉCNICA =====
