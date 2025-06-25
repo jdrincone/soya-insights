@@ -139,6 +139,7 @@ with col2:
         value=f"{calidad_remanente:.1f}%",
         delta=f"{(100 - gdt) - 85:.1f}%" if gdt < 15 else None
     )
+    st.caption("💡 Porcentaje de calidad que queda en los granos después del daño total (GDT).")
 
 with col3:
     st.metric(
@@ -146,6 +147,7 @@ with col3:
         value=f"{acidez_actual:.2f}",
         delta=f"+{acidez_actual - 0.5:.2f}" if acidez_actual > 0.5 else None
     )
+    st.caption("💡 Valor base: 0.5 mg KOH/g. Límite máximo aceptable: 2.0 mg KOH/g.")
 
 with col4:
     st.metric(
@@ -153,6 +155,7 @@ with col4:
         value=f"{proteina_actual:.1f}%",
         delta=f"-{70.0 - proteina_actual:.1f}%" if proteina_actual < 70.0 else None
     )
+    st.caption("💡 Proteína Base: 70.0%. Límite mínimo aceptable: 50.0%.")
 
 # Resumen textual de resultados
 st.subheader("📋 Resumen de Resultados")
@@ -229,8 +232,6 @@ fig.add_trace(go.Scatter(
 # Líneas de referencia
 fig.add_hline(y=1.0, line_dash="dash", line_color="orange", 
               annotation_text="Límite Acidez", yref="y")
-fig.add_hline(y=50.0, line_dash="dash", line_color="red", 
-              annotation_text="Límite Proteína", yref="y2")
 
 # Punto actual
 fig.add_trace(go.Scatter(
@@ -264,28 +265,199 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
-# ===== RECOMENDACIONES ESPECÍFICAS =====
-st.subheader("💡 Recomendaciones Específicas")
+# ===== EVOLUCIÓN TEMPORAL =====
+st.subheader("⏰ Evolución Temporal de Calidad")
 
-if gdc > gdh:
-    st.info(f"""
-    **🔥 Daño Térmico Dominante**
-    - El daño térmico ({gdc:.1f}%) es mayor que el daño por hongos ({gdh:.1f}%)
-    - **Causas probables:** Exposición prolongada a altas temperaturas, secado excesivo
-    - **Acciones recomendadas:**
-        - Revisar temperatura de almacenamiento (mantener < 25°C)
-        - Optimizar proceso de secado
-        - Implementar sistema de ventilación
+# Información sobre la ecuación utilizada
+with st.expander("🔬 Ecuación del Daño del Grano Utilizada"):
+    st.markdown("""
+    **📊 Modelo Matemático del Daño del Grano:**
+    
+    **Ecuación Principal:** `y = 0.0730x² - 0.7741x + 14.8443`
+    
+    **Donde:**
+    - **y** = Daño del grano (%)
+    - **x** = Tiempo de almacenamiento (meses)
+    
+    **Características de la Ecuación:**
+    - **Tipo:** Ecuación cuadrática (parábola)
+    - **Coeficiente cuadrático:** 0.0730 (curvatura positiva)
+    - **Coeficiente lineal:** -0.7741 (pendiente inicial negativa)
+    - **Término independiente:** 14.8443 (daño inicial)
+    
+    **Interpretación:**
+    - **Daño inicial:** 14.84% al tiempo 0
+    - **Comportamiento:** Decrece inicialmente, luego aumenta exponencialmente
+    - **Punto mínimo:** Aproximadamente a los 5.3 meses
+    - **Tendencia:** Aceleración del daño a largo plazo
+    
+    **Ajustes por Condiciones:**
+    - **Temperatura:** Factor multiplicativo basado en desviación de 20°C
+    - **Humedad:** Factor multiplicativo basado en desviación de 50%
+    - **Daño por hongos:** 60% del daño térmico, más sensible a humedad
     """)
-else:
-    st.info(f"""
-    **🍄 Daño por Hongos Dominante**
-    - El daño por hongos ({gdh:.1f}%) es mayor que el daño térmico ({gdc:.1f}%)
-    - **Causas probables:** Humedad elevada, condiciones de almacenamiento inadecuadas
-    - **Acciones recomendadas:**
-        - Controlar humedad relativa (< 65%)
-        - Implementar fungicidas preventivos
-        - Mejorar ventilación del almacén
+
+# Valores fijos para la simulación
+temperatura_alm = 25  # Temperatura fija
+humedad_alm = 60      # Humedad fija
+tiempo_max = 20       # Período fijo de 20 meses
+gdc_inicial = 5.0     # Valor fijo inicial
+gdh_inicial = 2.0     # Valor fijo inicial
+
+# Función para simular evolución temporal
+def simular_evolucion_temporal(temperatura, humedad, gdc_ini, gdh_ini, meses):
+    """Simular evolución de GDC y GDH a lo largo del tiempo usando ecuación real"""
+    tiempos = np.arange(0, meses + 1, 0.5)  # Cada 15 días
+    
+    # Factores de degradación basados en condiciones
+    factor_temp = 1 + (temperatura - 20) * 0.02  # 2% por °C sobre 20°C
+    factor_hum = 1 + (humedad - 50) * 0.01       # 1% por % de humedad sobre 50%
+    
+    # Ecuación real del daño del grano: y = 0.0730x² - 0.7741x + 14.8443
+    # Donde x es el tiempo en meses
+    def ecuacion_daño_grano(tiempo):
+        return 0.0730 * tiempo**2 - 0.7741 * tiempo + 14.8443
+    
+    # Evolución de GDC (daño térmico) usando ecuación real
+    gdc_evol = []
+    for t in tiempos:
+        # Aplicar ecuación real y ajustar por condiciones
+        daño_base = ecuacion_daño_grano(t)
+        daño_ajustado = daño_base * factor_temp
+        gdc_final = min(gdc_ini + daño_ajustado, 100)  # Máximo 100%
+        gdc_evol.append(max(0, gdc_final))  # Mínimo 0%
+    
+    # Evolución de GDH (daño por hongos, más sensible a humedad)
+    gdh_evol = []
+    for t in tiempos:
+        # Para hongos, usar una ecuación similar pero más sensible a humedad
+        daño_hongos_base = ecuacion_daño_grano(t) * 0.6  # 60% del daño térmico
+        daño_hongos_ajustado = daño_hongos_base * factor_hum
+        gdh_final = min(gdh_ini + daño_hongos_ajustado, 50)  # Máximo 50%
+        gdh_evol.append(max(0, gdh_final))  # Mínimo 0%
+    
+    # Calcular GDT, acidez y proteína en cada punto
+    gdt_evol = [gdc + gdh for gdc, gdh in zip(gdc_evol, gdh_evol)]
+    acidez_evol = [calcular_acidez_real(gdc, gdh, models.get('acidez')) 
+                   for gdc, gdh in zip(gdc_evol, gdh_evol)]
+    proteina_evol = [calcular_proteina_real(gdt, models.get('proteina')) 
+                     for gdt in gdt_evol]
+    
+    return tiempos, gdc_evol, gdh_evol, gdt_evol, acidez_evol, proteina_evol
+
+# Simular evolución
+tiempos, gdc_evol, gdh_evol, gdt_evol, acidez_evol, proteina_evol = simular_evolucion_temporal(
+    temperatura_alm, humedad_alm, gdc_inicial, gdh_inicial, 36  # Cambiar a 36 meses
+)
+
+# Gráfico de la ecuación base (sin ajustes)
+tiempos_base = np.linspace(7, 36, 100)  # Rango de 7 a 36 meses
+ecuacion_base = [0.0730 * t**2 - 0.7741 * t + 14.8443 for t in tiempos_base]
+
+fig_ecuacion_base = go.Figure()
+
+fig_ecuacion_base.add_trace(go.Scatter(
+    x=tiempos_base,
+    y=ecuacion_base,
+    mode='lines',
+    name='Ecuación Base',
+    line=dict(color='#1A494C', width=3, dash='dash'),
+    hovertemplate='Tiempo: %{x:.1f} meses<br>Daño: %{y:.2f}%<extra></extra>'
+))
+
+fig_ecuacion_base.update_layout(
+    title="Ecuación Base del Daño del Grano (7-36 meses)",
+    xaxis_title="Tiempo (meses)",
+    yaxis_title="Daño del Grano (%)",
+    xaxis=dict(range=[7, 36]),  # Forzar rango de 7 a 36
+    height=400,
+    showlegend=True,
+    plot_bgcolor='white',
+    paper_bgcolor='white'
+)
+
+st.plotly_chart(fig_ecuacion_base, use_container_width=True)
+
+# Gráfico de evolución de acidez y proteína en el tiempo
+fig_calidad_temporal = go.Figure()
+
+# Acidez
+fig_calidad_temporal.add_trace(go.Scatter(
+    x=tiempos,
+    y=acidez_evol,
+    mode='lines+markers',
+    name='Acidez (mg KOH/g)',
+    line=dict(color='#FF6B6B', width=3),
+    yaxis='y'
+))
+
+# Proteína
+fig_calidad_temporal.add_trace(go.Scatter(
+    x=tiempos,
+    y=proteina_evol,
+    mode='lines+markers',
+    name='Proteína Soluble (%)',
+    line=dict(color='#4ECDC4', width=3),
+    yaxis='y2'
+))
+
+# Líneas de referencia
+fig_calidad_temporal.add_hline(y=1.0, line_dash="dash", line_color="orange", 
+                              annotation_text="Límite Acidez", yref="y")
+
+fig_calidad_temporal.update_layout(
+    title="Evolución de Calidad del Grano (7-36 meses)",
+    xaxis_title="Tiempo (meses)",
+    yaxis=dict(title="Acidez (mg KOH/g)", side="left"),
+    yaxis2=dict(title="Proteína Soluble (%)", side="right", overlaying="y"),
+    xaxis=dict(range=[7, 36]),  # Forzar rango de 7 a 36
+    height=500,
+    showlegend=True,
+    plot_bgcolor='white',
+    paper_bgcolor='white'
+)
+
+st.plotly_chart(fig_calidad_temporal, use_container_width=True)
+
+
+
+# ===== RECOMENDACIONES ESPECÍFICAS =====
+st.subheader("💡 Insights")
+
+
+st.info(f"""
+    **🔬 Análisis de Datos y Modelado:**
+    
+    **📊 Limitaciones del Modelo:**
+    - No se logra predecir la degradación de los granos en el período inicial (0-7 meses) debido a datos insuficientes para modelar este comportamiento.
+    
+    **🔥 Factor Dominante - Daño Térmico:**
+    - El **Daño Térmico (GDC)** es el factor dominante en la predicción del porcentaje de acidez del aceite, contribuyendo hasta un **61.5%** en la predicción del resultado.
+    
+    **⚠️ Nivel de Acidez Crítico:**
+    - El valor promedio de acidez en las muestras analizadas fue de **2.76 mg KOH/g**, es decir, **0.76 unidades por encima** del umbral máximo sugerido por los estándares internacionales (2.0 mg KOH/g).
+    
+    **🔧 Variables Propuestas para Mejorar el Modelo:**
+    
+    **Proceso de Extrusión:**
+    - `temp_proceso_max`: Temperatura máxima de proceso (°C)
+    - `tiempo_extrusion`: Tiempo de extrusión (min)
+    - `humedad_entrada`: Humedad de entrada (%)
+    
+    **Composición del Grano:**
+    - `fibra`: Contenido de fibra (%)
+    - `cenizas`: Composición estructural (%)
+    
+    **Condiciones de Almacenamiento:**
+    - `tiempo_almac_bolsas`: Tiempo de almacenamiento en bolsas (días)
+    
+    **Indicadores de Calidad:**
+    - `sol_KOH`: Solubilidad en KOH
+    - `indice_color`: Indicadores de daño térmico
+    
+    **Variables Categóricas:**
+    - `variedad`: Tipo de variedad de soya
+    - `proveedor`: Origen/procedencia del grano
     """)
 
 # Recomendaciones por nivel de GDT
@@ -294,7 +466,7 @@ if gdt < 15:
 elif gdt < 35:
     st.warning("**⚠️ Implementar mejoras inmediatas** - Considerar rotación de inventario.")
 else:
-    st.error("**🚨 Acción urgente requerida** - Procesar o vender inmediatamente.")
+    st.error("**🚨 Acción urgente requerida** - Tener cuidado, el contenido nutricional de la muestra de granos no cumple los criterios mínimos para una buena dieta.")
 
 # ===== INFORMACIÓN TÉCNICA =====
 with st.expander("🔬 Información Técnica de los Modelos"):
