@@ -384,8 +384,7 @@ try:
     """)
     
 except FileNotFoundError:
-    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Ejecute el script `models/acidez_oil.py` para generarlo.")
-    st.code("source xgboost_env/bin/activate && python models/acidez_oil.py")
+    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Los gráficos de distribución no están disponibles.")
 
 
        
