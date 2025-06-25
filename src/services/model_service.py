@@ -4,6 +4,7 @@ import json
 import numpy as np
 import streamlit as st
 from sklearn.linear_model import LinearRegression
+import pandas as pd
 from ..config.constants import (
     ACIDEZ_MODEL_FILE, ACIDEZ_METRICS_FILE, ACIDEZ_INFO_FILE,
     PROTEINA_DATA_FILE
@@ -78,9 +79,14 @@ class ModelService:
             incremento_acidez = (gdc + gdh) * 0.02
             return acidez_base + incremento_acidez
         
-        # Usar modelo real
-        X_pred = np.array([[gdc, gdh]])
-        return model.predict(X_pred)[0]
+        # Usar modelo real con DataFrame para evitar warnings
+        try:
+            X_pred = pd.DataFrame([[gdc, gdh]], columns=['GDC', 'GDH'])
+            return model.predict(X_pred)[0]
+        except:
+            # Fallback si hay problemas con feature names
+            X_pred = np.array([[gdc, gdh]])
+            return model.predict(X_pred)[0]
     
     @staticmethod
     def predict_proteina(gdt, model=None):
@@ -92,5 +98,10 @@ class ModelService:
             return max(proteina_base - perdida_proteina, 30.0)
         
         # Usar modelo real
-        X_pred = np.array([[gdt]])
-        return model.predict(X_pred)[0] 
+        try:
+            X_pred = pd.DataFrame([[gdt]], columns=['GDT'])
+            return model.predict(X_pred)[0]
+        except:
+            # Fallback si hay problemas
+            X_pred = np.array([[gdt]])
+            return model.predict(X_pred)[0] 
