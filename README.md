@@ -43,6 +43,8 @@ Soya Insights es una aplicación web interactiva que permite:
    ```bash
    docker-compose up --build
    ```
+   pkill -f streamlit 
+   streamlit run Soya_Insights.py
 
 3. **Acceder a la aplicación:**
    Abrir http://localhost:8501 en tu navegador
