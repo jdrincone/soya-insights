@@ -9,19 +9,18 @@ import os
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Soya Insights - Dashboard Principal",
+    page_title="Soya Insights",
     page_icon="🌱",
     layout="wide"
 )
 
 # Título principal
-st.title("🌱 Soya Insights: Calidad y Degradación del Grano - Dashboard Integral")
-st.subheader("Análisis integral de degradación, acidez y proteína en granos de soya durante el almacenamiento")
+st.title("🌱 Soya Insights")
 
 # Información sobre las páginas disponibles
 st.info("""
 📚 **Páginas Disponibles:**
-- **📊 Dashboard Principal** (actual): Vista general y calculadora
+- **📊 Resumen Principal** (actual): Soya Insights
 - **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano
 - **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función del daño
 - **🥜 Modelo de Proteína**: Estudio del cambio de proteína soluble por degradación
@@ -195,61 +194,6 @@ else:
     **Recomendación:** Venta inmediata o procesamiento urgente. Revisar condiciones.
     """)
 
-# ===== CALCULADORA DE DEGRADACIÓN POR ESCENARIOS =====
-st.subheader("🧮 Calculadora de Escenarios de Daño")
-
-# Input para diferentes escenarios
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Escenario 1: Daño Térmico Alto")
-    gdc_esc1 = st.slider("GDC - Daño Térmico (%)", 0.0, 100.0, 60.0, 0.1, key="esc1_gdc")
-    gdh_esc1 = st.slider("GDH - Daño por Hongos (%)", 0.0, 50.0, 5.0, 0.1, key="esc1_gdh")
-    gdt_esc1 = gdc_esc1 + gdh_esc1
-    
-    acidez_esc1 = calcular_acidez_real(gdc_esc1, gdh_esc1, models.get('acidez'))
-    proteina_esc1 = calcular_proteina_real(gdt_esc1, models.get('proteina'))
-
-with col2:
-    st.subheader("Escenario 2: Daño por Hongos Alto")
-    gdc_esc2 = st.slider("GDC - Daño Térmico (%)", 0.0, 100.0, 10.0, 0.1, key="esc2_gdc")
-    gdh_esc2 = st.slider("GDH - Daño por Hongos (%)", 0.0, 50.0, 30.0, 0.1, key="esc2_gdh")
-    gdt_esc2 = gdc_esc2 + gdh_esc2
-    
-    acidez_esc2 = calcular_acidez_real(gdc_esc2, gdh_esc2, models.get('acidez'))
-    proteina_esc2 = calcular_proteina_real(gdt_esc2, models.get('proteina'))
-
-# Mostrar comparación de escenarios
-st.subheader("📊 Comparación de Escenarios")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.info(f"""
-    **Escenario 1: Daño Térmico**
-    - **GDT:** {gdt_esc1:.1f}%
-    - **Acidez:** {acidez_esc1:.2f} mg KOH/g
-    - **Proteína:** {proteina_esc1:.1f}%
-    - **Estado:** {'Crítico' if gdt_esc1 > 35 else 'Moderado' if gdt_esc1 > 15 else 'Excelente'}
-    """)
-
-with col2:
-    st.info(f"""
-    **Escenario 2: Daño por Hongos**
-    - **GDT:** {gdt_esc2:.1f}%
-    - **Acidez:** {acidez_esc2:.2f} mg KOH/g
-    - **Proteína:** {proteina_esc2:.1f}%
-    - **Estado:** {'Crítico' if gdt_esc2 > 35 else 'Moderado' if gdt_esc2 > 15 else 'Excelente'}
-    """)
-
-with col3:
-    st.info(f"""
-    **Escenario Actual**
-    - **GDT:** {gdt:.1f}%
-    - **Acidez:** {acidez_actual:.2f} mg KOH/g
-    - **Proteína:** {proteina_actual:.1f}%
-    - **Estado:** {'Crítico' if gdt > 35 else 'Moderado' if gdt > 15 else 'Excelente'}
-    """)
 
 # ===== GRÁFICOS DE EVOLUCIÓN =====
 st.subheader("📈 Evolución de Parámetros por GDT")
@@ -319,37 +263,6 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# ===== IMPACTO EN PRODUCTOS =====
-st.subheader("🏭 Impacto en Productos Derivados")
-
-# Calcular impacto para el GDT actual
-impacto_actual = calcular_impacto_productos(gdt)
-
-# Gráfico de barras del impacto
-productos = list(impacto_actual.keys())
-valores = list(impacto_actual.values())
-
-fig_impacto = go.Figure(data=[
-    go.Bar(
-        x=productos,
-        y=valores,
-        marker_color=['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
-        text=[f'{v:.1%}' for v in valores],
-        textposition='auto',
-    )
-])
-
-fig_impacto.update_layout(
-    title=f"Calidad Relativa de Productos (GDT: {gdt:.1f}%)",
-    xaxis_title="Productos",
-    yaxis_title="Calidad Relativa (%)",
-    height=400,
-    plot_bgcolor='white',
-    paper_bgcolor='white'
-)
-
-st.plotly_chart(fig_impacto, use_container_width=True)
 
 # ===== RECOMENDACIONES ESPECÍFICAS =====
 st.subheader("💡 Recomendaciones Específicas")
