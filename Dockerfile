@@ -3,10 +3,14 @@ FROM python:3.12-slim
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Establecer directorio de trabajo
 WORKDIR /app
+
+# Actualizar pip e instalar setuptools
+RUN pip install --upgrade pip setuptools wheel
 
 # Copiar archivos de dependencias
 COPY requirements.txt ./
