@@ -48,7 +48,7 @@ model, metrics, model_info = load_acidez_model()
 
 if model is not None:
     # Obtener valor medio de acidez de los datos
-    df_acidez_data = pd.read_csv("models/data/data_acidez.csv")
+    df_acidez_data = pd.read_csv("data/data_acidez.csv")
     acidez_media = df_acidez_data['pct_oil_acidez_mean'].mean()
     
     col1, col2 = st.columns([2, 1])
@@ -59,19 +59,19 @@ if model is not None:
         # Inputs para GDC y GDH
         gdc_input = st.number_input(
             "GDC - Daño Térmico (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=30.0,
-            step=0.1,
+            min_value=0,
+            max_value=100,
+            value=30,
+            step=1,
             help="Ingrese el porcentaje de daño térmico observado"
         )
         
         gdh_input = st.number_input(
             "GDH - Daño por Hongos (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=15.0,
-            step=0.1,
+            min_value=0,
+            max_value=100,
+            value=15,
+            step=1,
             help="Ingrese el porcentaje de daño por hongos observado"
         )
         
@@ -145,18 +145,29 @@ if model is not None:
         else:
             st.info("💡 Ingrese valores y haga clic en 'Calcular' para ver el análisis")
     
-    # Mostrar información del modelo
-    with st.expander("ℹ️ Información del Modelo"):
-        st.markdown(f"""
-        **Modelo Random Forest:**
-        - **Precisión (R²):** {metrics['test']['r2']:.1%}
-        - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
-        - **Valor medio histórico:** {acidez_media:.2f} mg KOH/g
-        
-        **Importancia de Variables:**
-        - **GDC (Térmico):** {model_info['feature_importance']['gdc_mean_in']:.1%}
-        - **GDH (Hongos):** {model_info['feature_importance']['gdh_mean_in']:.1%}
-        """)
+    # Explicación y métricas del modelo Random Forest en un expander
+    import json
+    try:
+        with open("models/artifacts/model_info_acidez.json", "r") as f:
+            model_info = json.load(f)
+        with open("models/artifacts/metrics_acidez.json", "r") as f:
+            metrics = json.load(f)
+        acidez_media = metrics['test']['mean'] if 'mean' in metrics['test'] else 0
+        fecha_entrenamiento = model_info.get('training_date', 'N/A')[:10]
+        with st.expander("ℹ️ Información del Modelo"):
+            st.markdown(f"""
+            **Modelo Random Forest:**
+            - **Fecha de entrenamiento:** {fecha_entrenamiento}
+            - **Precisión (R²):** {metrics['test']['r2']:.1%}
+            - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
+            - **Valor medio histórico:** {2.76:.2f} mg KOH/g
+            
+            **Importancia de Variables:**
+            - **GDC (Térmico):** {model_info['feature_importance']['gdc_mean_in']:.1%}
+            - **GDH (Hongos):** {model_info['feature_importance']['gdh_mean_in']:.1%}
+            """)
+    except Exception:
+        st.warning("No se pudo cargar la información del modelo.")
 
 else:
     st.error("❌ No se pudo cargar el modelo. Verifique que el archivo `models/artifacts/random_forest_acidez.pkl` existe.")
@@ -181,7 +192,7 @@ if 'acidez_resultado' in st.session_state:
             x=df_acidez_data['pct_oil_acidez_mean'],
             name='Datos Históricos',
             marker_color=CORPORATE_COLORS["verde_claro"],
-            opacity=0.7,
+            opacity=1,
             nbinsx=30
         ))
         
@@ -191,7 +202,8 @@ if 'acidez_resultado' in st.session_state:
             line_dash="dash",
             line_color="blue",
             annotation_text=f"Media: {resultado['media']:.2f}",
-            annotation_position="top right"
+            annotation_position="top right",
+            annotation=dict(font=dict(color="#1A494C"))
         )
         
         # Punto actual
@@ -201,7 +213,8 @@ if 'acidez_resultado' in st.session_state:
             line_color="red",
             line_width=3,
             annotation_text=f"Predicción: {resultado['predicha']:.2f}",
-            annotation_position="top left"
+            annotation_position="bottom left",
+            annotation=dict(font=dict(color="#1A494C"))
         )
         
         fig_dist.update_layout(
@@ -356,7 +369,7 @@ basadas en datos reales de análisis de granos de soya:
 # Mostrar la imagen generada
 try:
     # Leer el archivo HTML
-    with open("models/plots/subplot_distribuciones_acidez_oil.html", "r", encoding="utf-8") as f:
+    with open("imagenes/subplot_distribuciones_acidez_oil.html", "r", encoding="utf-8") as f:
         html_content = f.read()
     
     # Mostrar el gráfico HTML interactivo
@@ -371,8 +384,7 @@ try:
     """)
     
 except FileNotFoundError:
-    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Ejecute el script `models/acidez_oil.py` para generarlo.")
-    st.code("source xgboost_env/bin/activate && python models/acidez_oil.py")
+    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Los gráficos de distribución no están disponibles.")
 
 
        
@@ -385,25 +397,19 @@ if model is not None:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Predicciones vs Valores Reales")
-        try:
-            components.html(open("models/plots/predicciones_vs_reales_acidez.html").read(), height=400)
-        except FileNotFoundError:
-            st.warning("Gráfico de predicciones no encontrado")
+        st.subheader("**Predicciones vs Valores Reales**")
+        st.caption("Gráfico de dispersión que muestra la relación entre los valores reales y predichos de acidez.")
+        components.html(open("imagenes/predicciones_vs_reales_acidez.html").read(), height=500)
     
     with col2:
-        st.subheader("📈 Análisis de Residuos")
-        try:
-            components.html(open("models/plots/residuos_acidez.html").read(), height=400)
-        except FileNotFoundError:
-            st.warning("Gráfico de residuos no encontrado")
+        st.subheader("**Análisis de Residuos**")
+        st.caption("Gráfico de residuos que muestra la diferencia entre valores reales y predichos.")
+        components.html(open("imagenes/residuos_acidez.html").read(), height=400)
     
     # Gráficos SHAP
-    st.subheader("🎯 Análisis SHAP - Summary Plot")
-    try:
-        st.image("models/artifacts/shap_importance_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite")
-    except FileNotFoundError:
-        st.warning("Gráfico SHAP summary no encontrado")
+    st.subheader("📊 Análisis SHAP - Importancia de Variables")
+    st.caption("Gráfico que muestra la importancia de cada variable en la predicción de acidez.")
+    st.image("imagenes/shap_importance_acidez.png", caption="SHAP Summary Plot - Acidez del Aceite")
 
 # ===== SECCIÓN 7: ANÁLISIS Y ARGUMENTACIÓN CIENTÍFICA =====
 st.header("🧪 Entendimiento de los Resultados en Base a la Literatura")
