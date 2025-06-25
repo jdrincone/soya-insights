@@ -21,7 +21,7 @@ st.title("🌱 Soya Insights")
 st.info("""
 📚 **Páginas Disponibles:**
 - **📊 Resumen Principal** (actual): Soya Insights
-- **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano
+- **📉 Modelo de Degradación**: Detalle del modelo de degradación del grano en función del tiempo
 - **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función del daño
 - **🥜 Modelo de Proteína**: Estudio del cambio de proteína soluble por degradación
 """)
