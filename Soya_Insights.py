@@ -171,7 +171,12 @@ if gdt < 15:
     - **Proteína preservada:** {proteina_actual:.1f}% (excelente)
     
     **Recomendación:** Granos aptos para todos los usos industriales.
-    """)
+       """)
+    st.markdown("""
+
+     **⚠️ Nota de validez:** 
+   -  Los resultados son válidos siempre que se cumplan las condiciones asumidas y el comportamiento observado se mantenga en el tiempo evaluado.
+      """)
 elif gdt < 35:
     st.warning(f"""
     **⚠️ Calidad Moderada**
@@ -182,8 +187,14 @@ elif gdt < 35:
     - **Acidez aumentando:** {acidez_actual:.2f} mg KOH/g (requiere atención)
     - **Proteína reducida:** {proteina_actual:.1f}% (pérdida de {70.0 - proteina_actual:.1f}%)
     
-    **Recomendación:** Optimizar condiciones de almacenamiento y considerar rotación.
+  
     """)
+    st.markdown("""
+
+     **⚠️ Nota de validez:** 
+   -  Los resultados son válidos siempre que se cumplan las condiciones asumidas y el comportamiento observado se mantenga en el tiempo evaluado.
+      """)
+    
 else:
     st.error(f"""
     **🚨 Calidad Crítica**
@@ -195,7 +206,13 @@ else:
     - **Proteína significativamente reducida:** {proteina_actual:.1f}% (pérdida de {70.0 - proteina_actual:.1f}%)
     
     **Recomendación:** Venta inmediata o procesamiento urgente. Revisar condiciones.
+
     """)
+    st.markdown("""
+
+     **⚠️ Nota de validez:** 
+   -  Los resultados son válidos siempre que se cumplan las condiciones asumidas y el comportamiento observado se mantenga en el tiempo evaluado.
+      """)
 
 
 # ===== GRÁFICOS DE EVOLUCIÓN =====
@@ -291,10 +308,11 @@ with st.expander("🔬 Ecuación del Daño del Grano Utilizada"):
     - **Punto mínimo:** Aproximadamente a los 5.3 meses
     - **Tendencia:** Aceleración del daño a largo plazo
     
-    **Ajustes por Condiciones:**
-    - **Temperatura:** Factor multiplicativo basado en desviación de 20°C
-    - **Humedad:** Factor multiplicativo basado en desviación de 50%
-    - **Daño por hongos:** 60% del daño térmico, más sensible a humedad
+    **Asunciones en la adquisición de datos:**
+    - Datos fueron recolectados bajo las mismas condiciones operativas en planta (extrusión, secado, molienda, etc.). Esto es importante porque, de no cumplirse, podrían introducirse sesgos por condiciones no controladas.
+     - Intervalo temporal debradación del grano: 19 meses (sin informacíon de meses calendario).
+    - Intervalo temporal proteína soluble: entre el 1 de noviembre de 2024 y el 13 de mayo de 2025.
+    - Intervalo temporal de acidez: entre el 1 de octubre de 2024 y el 6 de Junio de 2025.
     """)
 
 # Valores fijos para la simulación
@@ -451,13 +469,13 @@ st.info(f"""
     **Condiciones de Almacenamiento:**
     - `tiempo_almac_bolsas`: Tiempo de almacenamiento en bolsas (días)
     
-    **Indicadores de Calidad:**
-    - `sol_KOH`: Solubilidad en KOH
-    - `indice_color`: Indicadores de daño térmico
     
     **Variables Categóricas:**
-    - `variedad`: Tipo de variedad de soya
     - `proveedor`: Origen/procedencia del grano
+
+    **Otras:**
+    - Acesoria con personas del negocio y expertos en los procesos operacionales para entender mejor el comportamiento de los datos.
+
     """)
 
 # Recomendaciones por nivel de GDT
@@ -490,3 +508,7 @@ with st.expander("🔬 Información Técnica de los Modelos"):
     - **15-35%:** Calidad moderada
     - **> 35%:** Calidad crítica
     """) 
+
+    # Footer
+st.markdown("---")
+st.markdown("*Soya Insights - Okuo-Analytics - Juan David Rincón *") 

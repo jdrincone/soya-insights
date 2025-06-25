@@ -182,3 +182,7 @@ try:
 except Exception as e:
     st.error(f"Error al cargar los datos: {str(e)}")
     st.info("Asegúrese de que el archivo 'Seguimiento de datos.xlsx' está en la carpeta 'data/'") 
+
+# Footer
+st.markdown("---")
+st.markdown("*Modelo de degradación - Soya Insights - Okuo-Analytics - Juan David Rincón *") 
