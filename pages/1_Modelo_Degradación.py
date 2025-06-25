@@ -22,14 +22,13 @@ st.title("🌾 Análisis Degradación de la Calidad del Grano en función de los
 
 with st.expander("ℹ️ Descripción del Proceso"):
     st.markdown("""
-    1. **Carga de Datos**: Se cargan los datos desde el archivo 'Seguimiento de datos.xlsx'.
-    2. **Filtrado Muestras Válidas**: Se filtran muestras con más de 4 puntos.
-    3. **Filtrado de Puntos Válidos**: Se filtran los puntos que cumplen la condición de función monótona creciente (la media debe ser mayor o igual que el punto anterior).
-    4. **Ajuste de Modelos**: Se ajustan dos modelos a los puntos válidos:
+    1. **Filtrado Muestras Válidas**: Se filtran muestras con más de 4 puntos.
+    2. **Filtrado de Puntos Válidos**: Se filtran los puntos que cumplen la condición de función monótona creciente (la media debe ser mayor o igual que el punto anterior).
+    3. **Ajuste de Modelos**: Se ajustan dos modelos a los puntos válidos:
        - **Modelo Lineal**: Se ajusta una línea recta a los puntos.
        - **Modelo Cuadrático**: Se ajusta una ecuación cuadrática a los puntos.
-    5. **Visualización de Resultados**: Se muestran los puntos válidos junto con los ajustes lineal y cuadrático, incluyendo las ecuaciones y los valores de R².
-    6. **Gráfica de la Media**: Se grafica la media vs Fecha, mostrando solo los puntos válidos y el ajuste lineal entre ellos.
+    4. **Visualización de Resultados**: Se muestran los puntos válidos junto con los ajustes lineal y cuadrático, incluyendo las ecuaciones y los valores de R².
+    5. **Gráfica de la Media**: Se grafica la media vs Fecha, mostrando solo los puntos válidos y el ajuste lineal entre ellos.
     """)
 
 try:
