@@ -1,11 +1,8 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from utils import load_and_prepare_data, fit_quantile_regression, plot_best_fit, PALETTE
+from src.utils import load_and_prepare_data, fit_quantile_regression, plot_best_fit, PALETTE
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 import numpy as np
@@ -181,7 +178,7 @@ try:
 
 except Exception as e:
     st.error(f"Error al cargar los datos: {str(e)}")
-    st.info("Asegúrese de que el archivo 'Seguimiento de datos.xlsx' está en la carpeta 'data/'") 
+    st.info("Asegúrese de que el archivo 'datos_seguimiento_granos.csv' está en la carpeta 'data/'") 
 
 # Footer
 st.markdown("---")

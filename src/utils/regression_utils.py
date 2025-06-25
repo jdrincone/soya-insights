@@ -16,7 +16,7 @@ PALETTE = {
 }
 
 def load_and_prepare_data(file_path):
-    """Carga y prepara los datos del archivo Excel."""
+    """Carga y prepara los datos del archivo CSV."""
     df = pd.read_csv(file_path)
     return df
 
