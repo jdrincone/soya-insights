@@ -4,6 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
+import joblib
+import os
 
 # Configuración de la página
 st.set_page_config(
@@ -13,66 +15,109 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🌱 Soya Insights: Calidad y Degradación del Grano")
+st.title("🌱 Soya Insights: Calidad y Degradación del Grano - Dashboard Integral")
+st.subheader("Análisis integral de degradación, acidez y proteína en granos de soya durante el almacenamiento")
 
 # Información sobre las páginas disponibles
 st.info("""
 📚 **Páginas Disponibles:**
-- **📊 Dashboard Principal** (actual): Vista general
-- **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano en el tiempo
-- **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función de los tipos de daño
+- **📊 Dashboard Principal** (actual): Vista general y calculadora
+- **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano
+- **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función del daño
 - **🥜 Modelo de Proteína**: Estudio del cambio de proteína soluble por degradación
 """)
 
 # Sidebar para controles
 st.sidebar.header("Configuración de Análisis")
 
-# Parámetros de degradación
-st.sidebar.subheader("Parámetros de Degradación")
-temperatura = st.sidebar.slider("Temperatura (°C)", 15, 40, 25)
-humedad = st.sidebar.slider("Humedad Relativa (%)", 40, 90, 60)
-tiempo_almacenamiento = st.sidebar.slider("Tiempo de Almacenamiento (días)", 0, 365, 30)
+# Parámetros de degradación reales
+st.sidebar.subheader("Parámetros de Daño del Grano")
+gdc = st.sidebar.slider("GDC - Daño Térmico (%)", 0.0, 100.0, 25.0, 0.1)
+gdh = st.sidebar.slider("GDH - Daño por Hongos (%)", 0.0, 50.0, 10.0, 0.1)
+gdt = gdc + gdh
 
-# Función para calcular degradación
-def calcular_degradacion(temperatura, humedad, tiempo):
-    # Modelo simplificado de degradación
-    factor_temp = 1 + (temperatura - 20) * 0.05
-    factor_humedad = 1 + (humedad - 50) * 0.02
-    degradacion_base = tiempo * 0.001
+# Mostrar GDT calculado
+st.sidebar.info(f"""
+**GDT - Daño Total: {gdt:.1f}%**
+- GDC: {gdc:.1f}%
+- GDH: {gdh:.1f}%
+""")
+
+# Cargar modelos entrenados
+@st.cache_resource
+def load_models():
+    """Cargar modelos entrenados"""
+    models = {}
     
-    degradacion_total = degradacion_base * factor_temp * factor_humedad
-    return min(degradacion_total, 0.95)  # Máximo 95% de degradación
+    # Modelo de acidez
+    if os.path.exists("models/artifacts/random_forest_acidez.pkl"):
+        models['acidez'] = joblib.load("models/artifacts/random_forest_acidez.pkl")
+    
+    # Modelo de proteína (usar regresión lineal simple)
+    try:
+        from sklearn.linear_model import LinearRegression
+        # Cargar datos de proteína para entrenar modelo simple
+        df_protein = pd.read_csv("models/data/datos_gdt_protein.csv")
+        X_protein = df_protein[["GDT"]].values
+        y_protein = df_protein["pct_soluble_protein_quim"].values
+        
+        model_protein = LinearRegression()
+        model_protein.fit(X_protein, y_protein)
+        models['proteina'] = model_protein
+    except Exception as e:
+        st.warning(f"No se pudo cargar el modelo de proteína: {e}")
+        models['proteina'] = None
+    
+    return models
+
+# Cargar modelos
+models = load_models()
+
+# Función para calcular acidez usando el modelo real
+def calcular_acidez_real(gdc, gdh, model):
+    """Calcular acidez usando el modelo Random Forest entrenado"""
+    if model is None:
+        # Fallback: modelo simplificado
+        acidez_base = 0.5
+        incremento_acidez = (gdc + gdh) * 0.02  # 2% por cada % de daño
+        return acidez_base + incremento_acidez
+    
+    # Usar modelo real
+    X_pred = np.array([[gdc, gdh]])
+    return model.predict(X_pred)[0]
+
+# Función para calcular proteína usando el modelo real
+def calcular_proteina_real(gdt, model):
+    """Calcular proteína soluble usando el modelo entrenado"""
+    if model is None:
+        # Fallback: modelo simplificado
+        proteina_base = 70.0  # 70% proteína típica
+        perdida_proteina = gdt * 0.3  # 0.3% de pérdida por cada % de GDT
+        return max(proteina_base - perdida_proteina, 30.0)
+    
+    # Usar modelo real
+    X_pred = np.array([[gdt]])
+    return model.predict(X_pred)[0]
 
 # Función para calcular impacto en productos
-def calcular_impacto_productos(degradacion):
+def calcular_impacto_productos(gdt):
+    """Calcular impacto en productos basado en GDT"""
+    # GDT más alto = mayor impacto negativo
+    factor_calidad = max(0.05, 1 - (gdt / 100))
+    
     productos = {
-        "Aceite de Soya": 1 - degradacion * 0.3,
-        "Harina de Soya": 1 - degradacion * 0.5,
-        "Proteína de Soya": 1 - degradacion * 0.7,
-        "Lecitina": 1 - degradacion * 0.4,
-        "Biodiesel": 1 - degradacion * 0.6
+        "Aceite de Soya": factor_calidad * 0.9,  # 90% de calidad base
+        "Harina de Soya": factor_calidad * 0.85,  # 85% de calidad base
+        "Proteína de Soya": factor_calidad * 0.8,  # 80% de calidad base
+        "Lecitina": factor_calidad * 0.95,  # 95% de calidad base
+        "Biodiesel": factor_calidad * 0.75   # 75% de calidad base
     }
     return productos
 
-# Función para calcular acidez
-def calcular_acidez(degradacion):
-    # Acidez base (mg KOH/g) + incremento por degradación
-    acidez_base = 0.5
-    incremento_acidez = degradacion * 2.0  # Máximo 2.0 mg KOH/g adicional
-    return acidez_base + incremento_acidez
-
-# Función para calcular porcentaje de proteína
-def calcular_proteina(degradacion):
-    # Proteína base (%) - pérdida por degradación
-    proteina_base = 40.0  # 40% proteína típica en soya
-    perdida_proteina = degradacion * 15.0  # Máximo 15% de pérdida
-    return max(proteina_base - perdida_proteina, 25.0)  # Mínimo 25%
-
-# Calcular métricas
-degradacion_actual = calcular_degradacion(temperatura, humedad, tiempo_almacenamiento)
-impacto_productos = calcular_impacto_productos(degradacion_actual)
-acidez_actual = calcular_acidez(degradacion_actual)
-proteina_actual = calcular_proteina(degradacion_actual)
+# Calcular métricas usando modelos reales
+acidez_actual = calcular_acidez_real(gdc, gdh, models.get('acidez'))
+proteina_actual = calcular_proteina_real(gdt, models.get('proteina'))
+impacto_productos = calcular_impacto_productos(gdt)
 
 # ===== SECCIÓN PRINCIPAL: CALCULADORA Y RESULTADOS =====
 st.markdown("---")
@@ -83,16 +128,17 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        label="Degradación Total",
-        value=f"{degradacion_actual:.1%}",
-        delta=f"{(degradacion_actual - 0.05):.1%}" if degradacion_actual > 0.05 else None
+        label="GDT - Daño Total",
+        value=f"{gdt:.1f}%",
+        delta=f"+{gdt - 15:.1f}%" if gdt > 15 else None
     )
 
 with col2:
+    calidad_remanente = max(0, 100 - gdt)
     st.metric(
         label="Calidad Remanente",
-        value=f"{(1 - degradacion_actual):.1%}",
-        delta=f"{(0.95 - degradacion_actual):.1%}" if degradacion_actual < 0.95 else None
+        value=f"{calidad_remanente:.1f}%",
+        delta=f"{(100 - gdt) - 85:.1f}%" if gdt < 15 else None
     )
 
 with col3:
@@ -104,221 +150,258 @@ with col3:
 
 with col4:
     st.metric(
-        label="Proteína (%)",
+        label="Proteína Soluble (%)",
         value=f"{proteina_actual:.1f}%",
-        delta=f"-{40.0 - proteina_actual:.1f}%" if proteina_actual < 40.0 else None
+        delta=f"-{70.0 - proteina_actual:.1f}%" if proteina_actual < 70.0 else None
     )
 
 # Resumen textual de resultados
 st.subheader("📋 Resumen de Resultados")
 
-meses_transcurridos = tiempo_almacenamiento / 30.0
-
-if degradacion_actual < 0.1:
+if gdt < 15:
     st.success(f"""
-    **✅ Condiciones Óptimas**
+    **✅ Calidad Excelente**
     
-    Después de {meses_transcurridos:.1f} meses de almacenamiento, los granos de soya mantienen excelente calidad:
-    - **Degradación mínima:** {degradacion_actual:.1%}
+    Con un daño total (GDT) de {gdt:.1f}%, los granos de soya mantienen excelente calidad:
+    - **Daño térmico (GDC):** {gdc:.1f}% (controlado)
+    - **Daño por hongos (GDH):** {gdh:.1f}% (mínimo)
     - **Acidez controlada:** {acidez_actual:.2f} mg KOH/g (dentro de límites normales)
-    - **Proteína preservada:** {proteina_actual:.1f}% (cercano al valor original)
+    - **Proteína preservada:** {proteina_actual:.1f}% (excelente)
     
-    **Recomendación:** Continuar con las condiciones actuales de almacenamiento.
+    **Recomendación:** Granos aptos para todos los usos industriales.
     """)
-elif degradacion_actual < 0.3:
+elif gdt < 35:
     st.warning(f"""
-    **⚠️ Degradación Moderada**
+    **⚠️ Calidad Moderada**
     
-    Después de {meses_transcurridos:.1f} meses de almacenamiento, se observa degradación moderada:
-    - **Degradación:** {degradacion_actual:.1%}
-    - **Acidez aumentando:** {acidez_actual:.2f} mg KOH/g (requiere monitoreo)
-    - **Proteína reducida:** {proteina_actual:.1f}% (pérdida de {40.0 - proteina_actual:.1f}%)
+    Con un daño total (GDT) de {gdt:.1f}%, se observa degradación moderada:
+    - **Daño térmico (GDC):** {gdc:.1f}% (requiere monitoreo)
+    - **Daño por hongos (GDH):** {gdh:.1f}% (aumentando)
+    - **Acidez aumentando:** {acidez_actual:.2f} mg KOH/g (requiere atención)
+    - **Proteína reducida:** {proteina_actual:.1f}% (pérdida de {70.0 - proteina_actual:.1f}%)
     
-    **Recomendación:** Optimizar condiciones de almacenamiento y considerar rotación de inventario.
+    **Recomendación:** Optimizar condiciones de almacenamiento y considerar rotación.
     """)
 else:
     st.error(f"""
-    **🚨 Degradación Crítica**
+    **🚨 Calidad Crítica**
     
-    Después de {meses_transcurridos:.1f} meses de almacenamiento, la degradación es crítica:
-    - **Degradación alta:** {degradacion_actual:.1%}
+    Con un daño total (GDT) de {gdt:.1f}%, la degradación es crítica:
+    - **Daño térmico (GDC):** {gdc:.1f}% (muy alto)
+    - **Daño por hongos (GDH):** {gdh:.1f}% (crítico)
     - **Acidez elevada:** {acidez_actual:.2f} mg KOH/g (fuera de especificaciones)
-    - **Proteína significativamente reducida:** {proteina_actual:.1f}% (pérdida de {40.0 - proteina_actual:.1f}%)
+    - **Proteína significativamente reducida:** {proteina_actual:.1f}% (pérdida de {70.0 - proteina_actual:.1f}%)
     
-    **Recomendación:** Venta inmediata o procesamiento urgente. Revisar condiciones de almacenamiento.
+    **Recomendación:** Venta inmediata o procesamiento urgente. Revisar condiciones.
     """)
 
-# ===== CALCULADORA DE DEGRADACIÓN POR MESES =====
-st.subheader("🧮 Calculadora de Degradación por Meses")
+# ===== CALCULADORA DE DEGRADACIÓN POR ESCENARIOS =====
+st.subheader("🧮 Calculadora de Escenarios de Daño")
 
-# Input para meses
-meses_calculo = st.number_input(
-    "Ingrese el número de meses para calcular degradación:",
-    min_value=0.0,
-    max_value=12.0,
-    value=3.0,
-    step=0.5,
-    help="Calcula la degradación esperada para un período específico"
-)
+# Input para diferentes escenarios
+col1, col2 = st.columns(2)
 
-# Calcular degradación para el período especificado
-dias_calculo = meses_calculo * 30
-degradacion_calculada = calcular_degradacion(temperatura, humedad, dias_calculo)
-acidez_calculada = calcular_acidez(degradacion_calculada)
-proteina_calculada = calcular_proteina(degradacion_calculada)
+with col1:
+    st.subheader("Escenario 1: Daño Térmico Alto")
+    gdc_esc1 = st.slider("GDC - Daño Térmico (%)", 0.0, 100.0, 60.0, 0.1, key="esc1_gdc")
+    gdh_esc1 = st.slider("GDH - Daño por Hongos (%)", 0.0, 50.0, 5.0, 0.1, key="esc1_gdh")
+    gdt_esc1 = gdc_esc1 + gdh_esc1
+    
+    acidez_esc1 = calcular_acidez_real(gdc_esc1, gdh_esc1, models.get('acidez'))
+    proteina_esc1 = calcular_proteina_real(gdt_esc1, models.get('proteina'))
 
-# Mostrar resultados de la calculadora
+with col2:
+    st.subheader("Escenario 2: Daño por Hongos Alto")
+    gdc_esc2 = st.slider("GDC - Daño Térmico (%)", 0.0, 100.0, 10.0, 0.1, key="esc2_gdc")
+    gdh_esc2 = st.slider("GDH - Daño por Hongos (%)", 0.0, 50.0, 30.0, 0.1, key="esc2_gdh")
+    gdt_esc2 = gdc_esc2 + gdh_esc2
+    
+    acidez_esc2 = calcular_acidez_real(gdc_esc2, gdh_esc2, models.get('acidez'))
+    proteina_esc2 = calcular_proteina_real(gdt_esc2, models.get('proteina'))
+
+# Mostrar comparación de escenarios
+st.subheader("📊 Comparación de Escenarios")
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.info(f"""
-    **Degradación Esperada**
-    - **Período:** {meses_calculo:.1f} meses
-    - **Degradación:** {degradacion_calculada:.1%}
-    - **Calidad:** {(1-degradacion_calculada):.1%}
+    **Escenario 1: Daño Térmico**
+    - **GDT:** {gdt_esc1:.1f}%
+    - **Acidez:** {acidez_esc1:.2f} mg KOH/g
+    - **Proteína:** {proteina_esc1:.1f}%
+    - **Estado:** {'Crítico' if gdt_esc1 > 35 else 'Moderado' if gdt_esc1 > 15 else 'Excelente'}
     """)
 
 with col2:
     st.info(f"""
-    **Acidez Esperada**
-    - **Valor:** {acidez_calculada:.2f} mg KOH/g
-    - **Incremento:** +{acidez_calculada - 0.5:.2f} mg KOH/g
-    - **Estado:** {'Normal' if acidez_calculada < 1.0 else 'Elevada' if acidez_calculada < 2.0 else 'Crítica'}
+    **Escenario 2: Daño por Hongos**
+    - **GDT:** {gdt_esc2:.1f}%
+    - **Acidez:** {acidez_esc2:.2f} mg KOH/g
+    - **Proteína:** {proteina_esc2:.1f}%
+    - **Estado:** {'Crítico' if gdt_esc2 > 35 else 'Moderado' if gdt_esc2 > 15 else 'Excelente'}
     """)
 
 with col3:
     st.info(f"""
-    **Proteína Esperada**
-    - **Valor:** {proteina_calculada:.1f}%
-    - **Pérdida:** -{40.0 - proteina_calculada:.1f}%
-    - **Estado:** {'Excelente' if proteina_calculada > 35 else 'Buena' if proteina_calculada > 30 else 'Reducida'}
+    **Escenario Actual**
+    - **GDT:** {gdt:.1f}%
+    - **Acidez:** {acidez_actual:.2f} mg KOH/g
+    - **Proteína:** {proteina_actual:.1f}%
+    - **Estado:** {'Crítico' if gdt > 35 else 'Moderado' if gdt > 15 else 'Excelente'}
     """)
 
 # ===== GRÁFICOS DE EVOLUCIÓN =====
-st.subheader("📈 Evolución de Parámetros por Meses")
+st.subheader("📈 Evolución de Parámetros por GDT")
 
-# Datos para gráficos
-meses_grafico = np.arange(0, 12.1, 0.5)
-dias_grafico = meses_grafico * 30
-degradaciones = [calcular_degradacion(temperatura, humedad, dia) for dia in dias_grafico]
-acideces = [calcular_acidez(deg) for deg in degradaciones]
-proteinas = [calcular_proteina(deg) for deg in degradaciones]
+# Crear datos para el gráfico
+gdt_range = np.linspace(0, 100, 50)
+acidez_range = [calcular_acidez_real(gdt_val * 0.7, gdt_val * 0.3, models.get('acidez')) for gdt_val in gdt_range]
+proteina_range = [calcular_proteina_real(gdt_val, models.get('proteina')) for gdt_val in gdt_range]
 
-# Gráfico de evolución múltiple
-fig_evolucion = go.Figure()
+# Gráfico de evolución
+fig = go.Figure()
 
-# Degradación
-fig_evolucion.add_trace(go.Scatter(
-    x=meses_grafico,
-    y=degradaciones,
-    mode='lines+markers',
-    name='Degradación (%)',
-    line=dict(color='red', width=3),
+# Acidez
+fig.add_trace(go.Scatter(
+    x=gdt_range,
+    y=acidez_range,
+    mode='lines',
+    name='Acidez (mg KOH/g)',
+    line=dict(color='#FF6B6B', width=3),
     yaxis='y'
 ))
 
-# Acidez
-fig_evolucion.add_trace(go.Scatter(
-    x=meses_grafico,
-    y=acideces,
-    mode='lines+markers',
-    name='Acidez (mg KOH/g)',
-    line=dict(color='orange', width=3),
+# Proteína
+fig.add_trace(go.Scatter(
+    x=gdt_range,
+    y=proteina_range,
+    mode='lines',
+    name='Proteína Soluble (%)',
+    line=dict(color='#4ECDC4', width=3),
     yaxis='y2'
 ))
 
-# Proteína
-fig_evolucion.add_trace(go.Scatter(
-    x=meses_grafico,
-    y=proteinas,
-    mode='lines+markers',
-    name='Proteína (%)',
-    line=dict(color='green', width=3),
-    yaxis='y3'
+# Líneas de referencia
+fig.add_hline(y=1.0, line_dash="dash", line_color="orange", 
+              annotation_text="Límite Acidez", yref="y")
+fig.add_hline(y=50.0, line_dash="dash", line_color="red", 
+              annotation_text="Límite Proteína", yref="y2")
+
+# Punto actual
+fig.add_trace(go.Scatter(
+    x=[gdt],
+    y=[acidez_actual],
+    mode='markers',
+    name='Valor Actual - Acidez',
+    marker=dict(color='#FF6B6B', size=12, symbol='diamond'),
+    yaxis='y'
 ))
 
-fig_evolucion.update_layout(
-    title="Evolución de Degradación, Acidez y Proteína por Meses",
-    xaxis_title="Meses de Almacenamiento",
-    yaxis=dict(title="Degradación (%)", side="left"),
-    yaxis2=dict(title="Acidez (mg KOH/g)", side="right", overlaying="y"),
-    yaxis3=dict(title="Proteína (%)", side="right", position=0.95),
+fig.add_trace(go.Scatter(
+    x=[gdt],
+    y=[proteina_actual],
+    mode='markers',
+    name='Valor Actual - Proteína',
+    marker=dict(color='#4ECDC4', size=12, symbol='diamond'),
+    yaxis='y2'
+))
+
+fig.update_layout(
+    title="Evolución de Acidez y Proteína vs GDT",
+    xaxis_title="GDT - Daño Total (%)",
+    yaxis=dict(title="Acidez (mg KOH/g)", side="left"),
+    yaxis2=dict(title="Proteína Soluble (%)", side="right", overlaying="y"),
     height=500,
-    hovermode='x unified'
+    showlegend=True,
+    plot_bgcolor='white',
+    paper_bgcolor='white'
 )
 
-st.plotly_chart(fig_evolucion, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True)
 
-# ===== TABLA DE RESULTADOS DETALLADOS =====
-st.subheader("📋 Tabla de Resultados Detallados")
+# ===== IMPACTO EN PRODUCTOS =====
+st.subheader("🏭 Impacto en Productos Derivados")
 
-# Crear DataFrame con resultados
-resultados_data = []
-for mes in [0, 1, 2, 3, 6, 9, 12]:
-    dias = mes * 30
-    deg = calcular_degradacion(temperatura, humedad, dias)
-    ac = calcular_acidez(deg)
-    prot = calcular_proteina(deg)
-    
-    resultados_data.append({
-        'Meses': mes,
-        'Días': dias,
-        'Degradación (%)': f"{deg:.1%}",
-        'Acidez (mg KOH/g)': f"{ac:.2f}",
-        'Proteína (%)': f"{prot:.1f}%",
-        'Calidad': 'Excelente' if deg < 0.1 else 'Buena' if deg < 0.2 else 'Moderada' if deg < 0.4 else 'Crítica'
-    })
+# Calcular impacto para el GDT actual
+impacto_actual = calcular_impacto_productos(gdt)
 
-df_resultados = pd.DataFrame(resultados_data)
-st.dataframe(df_resultados, use_container_width=True)
+# Gráfico de barras del impacto
+productos = list(impacto_actual.keys())
+valores = list(impacto_actual.values())
 
-# ===== SECCIÓN ORIGINAL (MANTENER PARA COMPATIBILIDAD) =====
-st.markdown("---")
-st.header("📊 Análisis de Impacto en Productos Derivados")
+fig_impacto = go.Figure(data=[
+    go.Bar(
+        x=productos,
+        y=valores,
+        marker_color=['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
+        text=[f'{v:.1%}' for v in valores],
+        textposition='auto',
+    )
+])
 
-# Gráfico de barras para productos
-fig_productos = px.bar(
-    x=list(impacto_productos.keys()),
-    y=list(impacto_productos.values()),
-    title="Calidad de Productos Derivados",
-    labels={'x': 'Producto', 'y': 'Factor de Calidad'},
-    color=list(impacto_productos.values()),
-    color_continuous_scale='RdYlGn'
+fig_impacto.update_layout(
+    title=f"Calidad Relativa de Productos (GDT: {gdt:.1f}%)",
+    xaxis_title="Productos",
+    yaxis_title="Calidad Relativa (%)",
+    height=400,
+    plot_bgcolor='white',
+    paper_bgcolor='white'
 )
-fig_productos.update_layout(height=400)
-st.plotly_chart(fig_productos, use_container_width=True)
 
-# Análisis de sensibilidad
-st.subheader("🔍 Análisis de Sensibilidad")
+st.plotly_chart(fig_impacto, use_container_width=True)
 
-col1, col2 = st.columns(2)
+# ===== RECOMENDACIONES ESPECÍFICAS =====
+st.subheader("💡 Recomendaciones Específicas")
 
-with col1:
-    # Sensibilidad a temperatura
-    temps = list(range(15, 41, 5))
-    degrad_temp = [calcular_degradacion(t, humedad, tiempo_almacenamiento) for t in temps]
+if gdc > gdh:
+    st.info(f"""
+    **🔥 Daño Térmico Dominante**
+    - El daño térmico ({gdc:.1f}%) es mayor que el daño por hongos ({gdh:.1f}%)
+    - **Causas probables:** Exposición prolongada a altas temperaturas, secado excesivo
+    - **Acciones recomendadas:**
+        - Revisar temperatura de almacenamiento (mantener < 25°C)
+        - Optimizar proceso de secado
+        - Implementar sistema de ventilación
+    """)
+else:
+    st.info(f"""
+    **🍄 Daño por Hongos Dominante**
+    - El daño por hongos ({gdh:.1f}%) es mayor que el daño térmico ({gdc:.1f}%)
+    - **Causas probables:** Humedad elevada, condiciones de almacenamiento inadecuadas
+    - **Acciones recomendadas:**
+        - Controlar humedad relativa (< 65%)
+        - Implementar fungicidas preventivos
+        - Mejorar ventilación del almacén
+    """)
+
+# Recomendaciones por nivel de GDT
+if gdt < 15:
+    st.success("**✅ Mantener condiciones actuales** - Los granos están en excelente estado.")
+elif gdt < 35:
+    st.warning("**⚠️ Implementar mejoras inmediatas** - Considerar rotación de inventario.")
+else:
+    st.error("**🚨 Acción urgente requerida** - Procesar o vender inmediatamente.")
+
+# ===== INFORMACIÓN TÉCNICA =====
+with st.expander("🔬 Información Técnica de los Modelos"):
+    st.markdown("""
+    **Modelos Utilizados:**
     
-    fig_temp = px.line(
-        x=temps,
-        y=degrad_temp,
-        title="Sensibilidad a la Temperatura",
-        labels={'x': 'Temperatura (°C)', 'y': 'Degradación'}
-    )
-    st.plotly_chart(fig_temp, use_container_width=True)
-
-with col2:
-    # Sensibilidad a humedad
-    hums = list(range(40, 91, 10))
-    degrad_hum = [calcular_degradacion(temperatura, h, tiempo_almacenamiento) for h in hums]
+    **🧪 Modelo de Acidez:**
+    - **Algoritmo:** Random Forest Regressor
+    - **Features:** GDC (Daño Térmico), GDH (Daño por Hongos)
+    - **Target:** Acidez del aceite (mg KOH/g)
+    - **Rango normal:** 0.5 - 1.0 mg KOH/g
     
-    fig_hum = px.line(
-        x=hums,
-        y=degrad_hum,
-        title="Sensibilidad a la Humedad",
-        labels={'x': 'Humedad (%)', 'y': 'Degradación'}
-    )
-    st.plotly_chart(fig_hum, use_container_width=True)
-
-# Footer
-st.markdown("---")
-st.markdown("*Soya Insights - Análisis de Degradación de Granos*") 
+    **🥜 Modelo de Proteína:**
+    - **Algoritmo:** Regresión Lineal
+    - **Feature:** GDT (Daño Total = GDC + GDH)
+    - **Target:** Proteína soluble (%)
+    - **Rango normal:** 50% - 70%
+    
+    **📊 Interpretación de GDT:**
+    - **< 15%:** Calidad excelente
+    - **15-35%:** Calidad moderada
+    - **> 35%:** Calidad crítica
+    """) 
