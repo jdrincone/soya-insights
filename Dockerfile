@@ -1,24 +1,40 @@
 FROM python:3.12-slim
 
-RUN pip install uv
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# Establecer directorio de trabajo
 WORKDIR /app
 
-COPY pyproject.toml ./
-COPY uv.lock ./
+# Copiar archivos de dependencias
 COPY requirements.txt ./
-COPY README.md ./
+COPY pyproject.toml ./
 
-RUN uv sync --frozen
-RUN pip install -r requirements.txt
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py ./
+# Copiar código de la aplicación
+COPY Soya_Insights.py ./
+COPY src/ ./src/
 COPY pages/ ./pages/
+COPY data/ ./data/
+COPY imagenes/ ./imagenes/
 COPY models/ ./models/
 
-# Generar la imagen SHAP corporativa durante la construcción
-RUN python3 models/create_shap_beeswarm_corporativo.py
+# Crear directorio para logs de Streamlit
+RUN mkdir -p /app/.streamlit
 
+# Configurar Streamlit para producción
+RUN echo "server.port = 8501" > /app/.streamlit/config.toml && \
+    echo "server.address = '0.0.0.0'" >> /app/.streamlit/config.toml && \
+    echo "server.enableCORS = false" >> /app/.streamlit/config.toml && \
+    echo "server.enableXsrfProtection = false" >> /app/.streamlit/config.toml && \
+    echo "browser.gatherUsageStats = false" >> /app/.streamlit/config.toml
+
+# Exponer puerto
 EXPOSE 8501
 
-CMD ["uv", "run", "streamlit", "run", "app.py"]
+# Comando de inicio
+CMD ["streamlit", "run", "Soya_Insights.py", "--server.port=8501", "--server.address=0.0.0.0"]

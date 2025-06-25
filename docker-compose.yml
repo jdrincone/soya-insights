@@ -9,12 +9,27 @@ services:
     environment:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-      - STREAMLIT_SERVER_BASEURLPATH=/soya-insights
+      - STREAMLIT_SERVER_BASEURLPATH=""
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
     volumes:
-      - .:/app
+      # Solo montar datos si es necesario para desarrollo
+      # - ./data:/app/data:ro
+      # - ./models:/app/models:ro
+      - soya_cache:/app/.streamlit
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/soya-insights/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - soya-network
+
+volumes:
+  soya_cache:
+    driver: local
+
+networks:
+  soya-network:
+    driver: bridge
