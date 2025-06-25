@@ -18,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Análisis Degradación de la Calidad del Grano en función de los meses de almacenamiento")
+st.title("🌾 Análisis Degradación de la Calidad del Grano en función de los meses de almacenamiento")
 
 with st.expander("ℹ️ Descripción del Proceso"):
     st.markdown("""
@@ -33,8 +33,9 @@ with st.expander("ℹ️ Descripción del Proceso"):
     """)
 
 try:
-    df = load_and_prepare_data("data/Seguimiento de datos.xlsx")
+    df = load_and_prepare_data("data/datos_seguimiento_granos.csv")
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    
     numeric_cols_no_fecha = [col for col in numeric_cols if col != "Fecha"]
     st.sidebar.header("Parámetros de Análisis")
     selected_column = st.sidebar.selectbox(

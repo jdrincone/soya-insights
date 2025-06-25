@@ -13,15 +13,14 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🌱 Soya Insights")
-st.subheader("Dashboard Principal - Análisis de Degradación de Granos de Soya")
+st.title("🌱 Soya Insights: Calidad y Degradación del Grano")
 
 # Información sobre las páginas disponibles
 st.info("""
 📚 **Páginas Disponibles:**
-- **📊 Dashboard Principal** (actual): Vista general y calculadora
-- **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano
-- **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función del daño
+- **📊 Dashboard Principal** (actual): Vista general
+- **📉 Modelo de Degradación**: Detalle científico del modelo de degradación del grano en el tiempo
+- **🧪 Modelo de Acidez**: Análisis del cambio de acidez en función de los tipos de daño
 - **🥜 Modelo de Proteína**: Estudio del cambio de proteína soluble por degradación
 """)
 

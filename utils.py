@@ -17,16 +17,8 @@ PALETTE = {
 
 def load_and_prepare_data(file_path):
     """Carga y prepara los datos del archivo Excel."""
-    df = pd.read_excel(file_path, skiprows=2)
-    df.rename(columns={"Unnamed: 1": "Fecha"}, inplace=True)
-    df = df.drop(columns=["Unnamed: 0"])
-    
-    # Filtrar columnas con menos de 12 valores nulos
-    null_counts = df.isnull().sum().reset_index()
-    null_counts.columns = ['column', 'null_count']
-    cols_to_keep = null_counts[null_counts['null_count'] <= 12]['column'].tolist()
-    
-    return df[cols_to_keep]
+    df = pd.read_csv(file_path)
+    return df
 
 def fit_quantile_regression(df, column, taus=[0.4, 0.5, 0.6]):
     """Ajusta modelos de regresión cuantílica para una columna específica."""
