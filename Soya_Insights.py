@@ -77,10 +77,8 @@ st.header("📈 Análisis de Evolución Temporal")
 
 # Parámetros de simulación
 col1, col2 = st.columns(2)
-with col1:
-    temperatura_alm = st.slider("Temperatura de Almacenamiento (°C)", 15.0, 35.0, 25.0, 0.5)
-with col2:
-    humedad_alm = st.slider("Humedad Relativa (%)", 40.0, 80.0, 60.0, 1.0)
+temperatura_alm = 25
+humedad_alm = 13
 
 # Valores iniciales
 gdc_inicial = 5.0
@@ -116,7 +114,7 @@ fig_evolucion.add_trace(go.Scatter(
 
 # Línea vertical para el promedio de GDT de la empresa
 fig_evolucion.add_vline(x=38.16, line_dash="dash", line_color="purple", line_width=2,
-                        annotation_text="Promedio Empresa (38.16%)", 
+                        annotation_text="Promedio GDT (38.16%)", 
                         annotation_position="top right",
                         annotation=dict(font=dict(color="purple", size=12)))
 
@@ -160,7 +158,7 @@ fig_ecuacion_base.add_trace(go.Scatter(
 
 # Línea horizontal para el promedio de GDT de la empresa
 fig_ecuacion_base.add_hline(y=38.16, line_dash="dash", line_color="purple", line_width=2,
-                            annotation_text="Promedio Empresa (38.16%)", 
+                            annotation_text="Promedio GDT (38.16%)", 
                             annotation_position="right",
                             annotation=dict(font=dict(color="purple", size=12)))
 
