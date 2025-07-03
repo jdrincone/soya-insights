@@ -183,7 +183,7 @@ ehthumbs.db
 Desktop.ini
 
 # Streamlit
-.streamlit/
+# .streamlit/
 
 # Docker
 .dockerignore
