@@ -277,3 +277,6 @@ df -h
 ---
 
 **🎯 Objetivo**: Despliegue seguro y confiable de Soya Insights en servidor remoto con configuración optimizada para producción. 
+
+#streamlit run Soya_Insights.py
+#./deploy.sh
