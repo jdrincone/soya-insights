@@ -1,0 +1,30 @@
+name: CI/CD – Deploy to Lightsail
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Sync code to server
+        run: |
+          rsync -az --delete \
+                --exclude '.git' \
+                ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/apps/soya-insights
+
+      - name: Run deploy script
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+              'cd ~/apps/soya-insights && ./deploy.sh prod'
+
