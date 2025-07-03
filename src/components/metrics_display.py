@@ -21,7 +21,7 @@ class MetricsDisplay:
         """Mostrar métrica de calidad remanente"""
         calidad_remanente = max(0, 100 - gdt)
         st.metric(
-            label="Calidad Remanente",
+            label="Estado de Calidad",
             value=f"{calidad_remanente:.1f}%",
             delta=f"{(100 - gdt) - CALIDAD_REMANENTE_BASE:.1f}%" if gdt < GDT_EXCELENTE else None
         )

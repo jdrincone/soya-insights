@@ -6,6 +6,9 @@
 
 set -e
 
+# Forzar ejecución desde la raíz del proyecto
+cd "$(dirname "$0")"
+
 # Colores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,21 +42,31 @@ check_docker() {
     log "Docker y Docker Compose verificados ✓"
 }
 
-# Parar contenedores existentes
-stop_containers() {
-    log "Deteniendo contenedores existentes..."
-    docker-compose down --remove-orphans || true
+# Verificar archivo de configuración de tema
+check_theme_config() {
+    if [ ! -f .streamlit/config.toml ]; then
+        error "No se encontró .streamlit/config.toml. Asegúrate de tener el archivo de tema personalizado."
+    fi
+    log "Archivo de configuración de tema encontrado (.streamlit/config.toml)"
+    log "Contenido actual del archivo de tema:"
+    cat .streamlit/config.toml
 }
 
-# Limpiar imágenes antiguas
+# Parar contenedores existentes y limpiar volúmenes
+stop_containers() {
+    log "Deteniendo contenedores existentes y limpiando volúmenes..."
+    docker-compose down -v --remove-orphans || true
+}
+
+# Limpiar imágenes antiguas y sistema
 cleanup_images() {
-    log "Limpiando imágenes Docker antiguas..."
-    docker image prune -f || true
+    log "Limpiando imágenes Docker antiguas y sistema..."
+    docker system prune -af || true
 }
 
 # Construir nueva imagen
 build_image() {
-    log "Construyendo imagen Docker..."
+    log "Construyendo imagen Docker (sin caché, contexto correcto)..."
     docker-compose build --no-cache
 }
 
@@ -92,11 +105,14 @@ main() {
     
     # Verificar prerequisitos
     check_docker
+
+    # Verificar archivo de tema
+    check_theme_config
     
-    # Parar contenedores existentes
+    # Parar contenedores existentes y limpiar volúmenes
     stop_containers
     
-    # Limpiar imágenes antiguas
+    # Limpiar imágenes antiguas y sistema
     cleanup_images
     
     # Construir nueva imagen

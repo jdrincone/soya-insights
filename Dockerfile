@@ -27,15 +27,9 @@ COPY data/ ./data/
 COPY imagenes/ ./imagenes/
 COPY models/ ./models/
 
-# Crear directorio para logs de Streamlit
+# Crear directorio .streamlit y copiar configuración
 RUN mkdir -p /app/.streamlit
-
-# Configurar Streamlit para producción
-RUN echo "server.port = 8501" > /app/.streamlit/config.toml && \
-    echo "server.address = '0.0.0.0'" >> /app/.streamlit/config.toml && \
-    echo "server.enableCORS = false" >> /app/.streamlit/config.toml && \
-    echo "server.enableXsrfProtection = false" >> /app/.streamlit/config.toml && \
-    echo "browser.gatherUsageStats = false" >> /app/.streamlit/config.toml
+COPY .streamlit/config.toml /app/.streamlit/config.toml
 
 # Exponer puerto
 EXPOSE 8501
