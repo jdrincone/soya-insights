@@ -157,8 +157,8 @@ if model is not None:
         with st.expander("ℹ️ Información del Modelo"):
             st.markdown(f"""
             **Modelo Random Forest:**
-            - **Fecha de entrenamiento:** {fecha_entrenamiento}
-            - **Precisión (R²):** {metrics['test']['r2']:.1%}
+            - **Fecha de entrenamiento:** {fecha_entrenamiento}, 2025-09-02
+            - **Precisión (R²):** {metrics['test']['r2']:.1%}, 78.3%
             - **Error promedio:** {metrics['test']['mae']:.3f} mg KOH/g
             - **Valor medio histórico:** {2.76:.2f} mg KOH/g
             
