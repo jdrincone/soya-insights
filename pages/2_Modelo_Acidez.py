@@ -355,6 +355,57 @@ try:
 except FileNotFoundError:
     st.warning("No se encontraron las reglas del árbol representativo. Ejecuta el entrenamiento para generarlas.")
 
+
+
+# ===== SECCIÓN 1.1: GRÁFICOS DE ACIDEZ =====
+st.header("📈 Comportamiento del nivel de acidez en el tiempo")
+
+
+st.markdown("""
+### 
+
+A continuación se muestran las distribuciones de las variables relacionadas con la acidez del aceite, 
+basadas en datos reales de análisis de granos de soya:
+""")
+
+# Mostrar la imagen generada
+try:
+    # Leer el archivo HTML
+    with open("imagenes/tendencias_acidez_aceite_colores.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    
+    # Mostrar el gráfico HTML interactivo
+    st.components.v1.html(html_content, height=600)
+    st.markdown("""
+    **Interpretación del comportamiento:**
+
+    - **Puntos grises:** puntos grises = mediciones diarias de acidez; 3 líneas de tendencia:
+    - **STL (verde sólido):** capta cambios rápidos.
+    - **LOWESS (verde oscuro):** forma general más suave.
+    - **EWMA (naranja):** intermedio y útil para alertas.
+
+    - **Franjas sombreadas (Ago–Sep 2023–2025):** coinciden con los **mínimos anuales** de acidez.
+
+    - **Patrón estacional:** la acidez **sube entre abril–junio** y **baja en agosto–septiembre**.
+
+    - **2023:** ascenso hasta mitad de año (~1.7–1.9%) y caída a mínimos en Ago–Sep (~0.7–1.0%).
+
+    - **2024:** **pico excepcional** en Q2 (~3.8–4.0%) y descenso marcado hacia Ago–Sep.
+
+    - **2025:** **mayor variabilidad** (ondas ~2–3.5%) y baja nuevamente en Ago–Sep.
+
+    - Acidez con **estacionalidad fuerte** (picos abr–jun, valles ago–sep) y **anomalía notable** en 2024-Q2.
+
+        
+    """)
+    
+except FileNotFoundError:
+    st.warning("⚠️ No se encontró el archivo HTML de distribuciones. Los gráficos de distribución no están disponibles.")
+
+
+
+
+
 # ===== SECCIÓN 2: GRÁFICOS DE ACIDEZ =====
 st.header("📈 Análisis de Distribuciones de Datos")
 
